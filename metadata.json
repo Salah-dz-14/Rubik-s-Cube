@@ -1,0 +1,6 @@
+{
+  "name": "Rubik's SpeedCube 3D PWA",
+  "description": "An offline-ready 3D Rubik's cube speedcubing app with smooth touch controls, WCA-style scrambler, precision timer, statistics, and dark mode.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

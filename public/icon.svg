@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#3b82f6" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background container -->
+  <rect width="512" height="512" rx="104" fill="url(#bg)" />
+
+  <g transform="translate(256, 256) scale(0.9)" filter="url(#glow)">
+    <!-- Isometric Rubik's Cube -->
+    <!-- Top Face (Yellow) -->
+    <!-- Row 0 -->
+    <polygon points="0,-160 50,-131 0,-102 -50,-131" fill="#facc15" stroke="#111827" stroke-width="6" rx="4" />
+    <polygon points="54,-129 104,-100 54,-71 4,-100" fill="#eab308" stroke="#111827" stroke-width="6" />
+    <polygon points="108,-98 158,-69 108,-40 58,-69" fill="#facc15" stroke="#111827" stroke-width="6" />
+
+    <!-- Row 1 -->
+    <polygon points="-54,-129 -4,-100 -54,-71 -104,-100" fill="#fef08a" stroke="#111827" stroke-width="6" />
+    <polygon points="0,-98 50,-69 0,-40 -50,-69" fill="#fbbf24" stroke="#111827" stroke-width="6" />
+    <polygon points="54,-67 104,-38 54,-9 4,-38" fill="#facc15" stroke="#111827" stroke-width="6" />
+
+    <!-- Row 2 -->
+    <polygon points="-108,-98 -58,-69 -108,-40 -158,-69" fill="#fde047" stroke="#111827" stroke-width="6" />
+    <polygon points="-54,-67 -4,-38 -54,-9 -104,-38" fill="#facc15" stroke="#111827" stroke-width="6" />
+    <polygon points="0,-36 50,-7 0,22 -50,-7" fill="#fef08a" stroke="#111827" stroke-width="6" />
+
+    <!-- Left Face (Blue / Cyan) -->
+    <!-- Row 0 -->
+    <polygon points="-160,-65 -110,-36 -110,22 -160,-7" fill="#2563eb" stroke="#111827" stroke-width="6" />
+    <polygon points="-106,-34 -56,-5 -56,53 -106,24" fill="#3b82f6" stroke="#111827" stroke-width="6" />
+    <polygon points="-52,-3 -2,26 -2,84 -52,55" fill="#1d4ed8" stroke="#111827" stroke-width="6" />
+
+    <!-- Row 1 -->
+    <polygon points="-160,-3 -110,26 -110,84 -160,55" fill="#3b82f6" stroke="#111827" stroke-width="6" />
+    <polygon points="-106,28 -56,57 -56,115 -106,86" fill="#60a5fa" stroke="#111827" stroke-width="6" />
+    <polygon points="-52,59 -2,88 -2,146 -52,117" fill="#2563eb" stroke="#111827" stroke-width="6" />
+
+    <!-- Row 2 -->
+    <polygon points="-160,59 -110,88 -110,146 -160,117" fill="#1e40af" stroke="#111827" stroke-width="6" />
+    <polygon points="-106,90 -56,119 -56,177 -106,148" fill="#2563eb" stroke="#111827" stroke-width="6" />
+    <polygon points="-52,121 -2,150 -2,208 -52,179" fill="#3b82f6" stroke="#111827" stroke-width="6" />
+
+    <!-- Right Face (Red / Coral) -->
+    <!-- Row 0 -->
+    <polygon points="2,26 52,-3 52,55 2,84" fill="#ef4444" stroke="#111827" stroke-width="6" />
+    <polygon points="56,-5 106,-34 106,24 56,53" fill="#dc2626" stroke="#111827" stroke-width="6" />
+    <polygon points="110,-36 160,-65 160,-7 110,22" fill="#f87171" stroke="#111827" stroke-width="6" />
+
+    <!-- Row 1 -->
+    <polygon points="2,88 52,59 52,117 2,146" fill="#f87171" stroke="#111827" stroke-width="6" />
+    <polygon points="56,57 106,28 106,86 56,115" fill="#ef4444" stroke="#111827" stroke-width="6" />
+    <polygon points="110,26 160,-3 160,55 110,84" fill="#b91c1c" stroke="#111827" stroke-width="6" />
+
+    <!-- Row 2 -->
+    <polygon points="2,150 52,121 52,179 2,208" fill="#dc2626" stroke="#111827" stroke-width="6" />
+    <polygon points="56,119 106,90 106,148 56,177" fill="#f87171" stroke="#111827" stroke-width="6" />
+    <polygon points="110,88 160,59 160,117 110,146" fill="#ef4444" stroke="#111827" stroke-width="6" />
+  </g>
+</svg>
