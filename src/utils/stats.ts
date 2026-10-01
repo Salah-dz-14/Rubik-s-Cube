@@ -3,14 +3,14 @@ import { CubeStats, SolveRecord, UserPreferences, ColorTheme } from '../types/cu
 export const THEMES: Record<string, ColorTheme> = {
   classic: {
     name: 'classic',
-    label: 'Classic WCA',
+    label: 'Classic Vibrant',
     colors: {
-      U: '#FFFFFF', // White
-      D: '#FFD500', // Yellow
-      L: '#FF5800', // Orange
-      R: '#C41E3A', // Red
-      F: '#009E60', // Green
-      B: '#0051BA', // Blue
+      U: '#FFFFFF', // Pure Crisp White
+      D: '#FFD600', // Vibrant Sunny Yellow
+      L: '#FF6D00', // Vibrant Citrus Orange
+      R: '#EE2B2B', // Vibrant Ruby Red
+      F: '#00D060', // Vibrant Emerald Green
+      B: '#0075FF', // Vibrant Electric Azure
       core: '#15171e',
       border: '#0d0e12',
     },
@@ -19,12 +19,12 @@ export const THEMES: Record<string, ColorTheme> = {
     name: 'neon',
     label: 'Cyber Neon',
     colors: {
-      U: '#F8FAFC',
-      D: '#FACC15',
-      L: '#FB923C',
-      R: '#F43F5E',
-      F: '#10B981',
-      B: '#38BDF8',
+      U: '#FFFFFF',
+      D: '#FFEE00',
+      L: '#FF8800',
+      R: '#FF1744',
+      F: '#00E676',
+      B: '#00B0FF',
       core: '#0a0d14',
       border: '#030712',
     },
@@ -33,12 +33,12 @@ export const THEMES: Record<string, ColorTheme> = {
     name: 'pastel',
     label: 'Nordic Pastel',
     colors: {
-      U: '#F1F5F9',
-      D: '#FEF08A',
-      L: '#FDBA74',
-      R: '#FDA4AF',
-      F: '#86EFAC',
-      B: '#93C5FD',
+      U: '#FFFFFF',
+      D: '#FFF176',
+      L: '#FFB74D',
+      R: '#FF8A80',
+      F: '#A5D6A7',
+      B: '#90CAF9',
       core: '#1e293b',
       border: '#0f172a',
     },
@@ -49,7 +49,7 @@ export const THEMES: Record<string, ColorTheme> = {
     colors: {
       U: '#FFFFFF',
       D: '#FFFF00',
-      L: '#FF8800',
+      L: '#FF7700',
       R: '#FF0033',
       F: '#00FF66',
       B: '#0066FF',
@@ -61,7 +61,7 @@ export const THEMES: Record<string, ColorTheme> = {
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
   theme: 'classic',
-  darkMode: true,
+  darkMode: false, // Default is light mode
   soundEnabled: true,
   hapticEnabled: true,
   showFaceLabels: false,
@@ -73,6 +73,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 
 const SOLVES_STORAGE_KEY = 'rubiks_speedcube_solves_v1';
 const PREFS_STORAGE_KEY = 'rubiks_speedcube_prefs_v1';
+const LIGHT_MODE_DEFAULTED_KEY = 'rubiks_light_default_v2';
 
 export function loadSavedSolves(): SolveRecord[] {
   try {
@@ -93,7 +94,17 @@ export function saveSolves(solves: SolveRecord[]) {
 
 export function loadSavedPreferences(): UserPreferences {
   try {
+    const isLightModeDefaulted = localStorage.getItem(LIGHT_MODE_DEFAULTED_KEY);
     const data = localStorage.getItem(PREFS_STORAGE_KEY);
+
+    if (!isLightModeDefaulted) {
+      // First time with light mode as default: ensure light mode
+      localStorage.setItem(LIGHT_MODE_DEFAULTED_KEY, 'true');
+      const prefs = data ? { ...DEFAULT_PREFERENCES, ...JSON.parse(data), darkMode: false } : DEFAULT_PREFERENCES;
+      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+      return prefs;
+    }
+
     return data ? { ...DEFAULT_PREFERENCES, ...JSON.parse(data) } : DEFAULT_PREFERENCES;
   } catch {
     return DEFAULT_PREFERENCES;

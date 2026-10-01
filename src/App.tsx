@@ -19,6 +19,7 @@ import {
 } from './utils/stats';
 import { generateScramble, parseAlgorithm, getInverseMove } from './utils/scrambler';
 import { sound } from './utils/audio';
+import { initSolverAsync, findMinimalSolution } from './utils/solver';
 
 export default function App() {
   const engineRef = useRef<RubikEngine | null>(null);
@@ -31,9 +32,11 @@ export default function App() {
   const [solves, setSolves] = useState<SolveRecord[]>(() => loadSavedSolves());
   const stats = computeCubeStats(solves);
 
-  // Scramble State
+  // Scramble & Solve State
   const [scrambleStr, setScrambleStr] = useState<string>('');
   const [isScrambling, setIsScrambling] = useState<boolean>(false);
+  const [isSolving, setIsSolving] = useState<boolean>(false);
+  const [solutionMovesRemaining, setSolutionMovesRemaining] = useState<number>(0);
 
   // Move History & Undo/Redo
   const [moveHistory, setMoveHistory] = useState<Move[]>([]);
@@ -47,15 +50,17 @@ export default function App() {
   const timerStartTimestampRef = useRef<number | null>(null);
   const timerRafRef = useRef<number | null>(null);
   const inspectionIntervalRef = useRef<number | null>(null);
+  const initialScrambleExecutedRef = useRef<boolean>(false);
 
   // Modals
   const [isStatsOpen, setIsStatsOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
 
-  // Initialize sound settings
+  // Initialize sound settings and prime the optimal solver in background
   useEffect(() => {
     sound.enabled = preferences.soundEnabled;
+    initSolverAsync();
   }, [preferences.soundEnabled]);
 
   // Save preferences when changed
@@ -65,51 +70,168 @@ export default function App() {
     sound.enabled = nextPrefs.soundEnabled;
   };
 
-  // Generate initial scramble on first load
+  // --- Smooth Animated Scramble ("زر الرجوع في الاسفل يقوم بخلط المكعب لكن بانيميشن") ---
+  const runAnimatedScramble = useCallback(
+    (customScramble?: string) => {
+      if (!engineRef.current || isScrambling || isSolving) return;
+
+      // Reset timer and move counters
+      if (timerRafRef.current) cancelAnimationFrame(timerRafRef.current);
+      if (inspectionIntervalRef.current) clearInterval(inspectionIntervalRef.current);
+      setTimerState('idle');
+      setTimeMs(0);
+      setMoveCount(0);
+      setMoveHistory([]);
+      setUndoStack([]);
+
+      // Ensure cube is in solved state before scrambling
+      engineRef.current.resetToSolved();
+
+      const newScramble = customScramble || generateScramble(20);
+      setScrambleStr(newScramble);
+      setIsScrambling(true);
+
+      const prevSpeed = preferences.moveSpeed;
+      // Fluid turn speed for animated scramble (105ms per turn)
+      engineRef.current.setMoveSpeed(105);
+      engineRef.current.isProgrammatic = true;
+
+      const moves = parseAlgorithm(newScramble);
+      let i = 0;
+
+      const stepScramble = () => {
+        if (!engineRef.current) {
+          setIsScrambling(false);
+          return;
+        }
+
+        if (i >= moves.length) {
+          setIsScrambling(false);
+          if (engineRef.current) {
+            engineRef.current.isProgrammatic = false;
+            engineRef.current.setMoveSpeed(prevSpeed);
+          }
+          sound.playClick(1.35);
+          return;
+        }
+
+        const move = moves[i];
+        i++;
+        sound.playClick(0.9 + (i % 5) * 0.08);
+        engineRef.current.executeMove(move, false);
+
+        setTimeout(stepScramble, 115);
+      };
+
+      stepScramble();
+    },
+    [isScrambling, isSolving, preferences.moveSpeed]
+  );
+
+  // --- Initial App Entry Animation ("عند فتح اللعبة اول مرة يكون المكعب محلولا ثم يبدأ بالخلط تلقائيا و يقوم المستخدم بحله") ---
   useEffect(() => {
-    const initialScramble = generateScramble(22);
-    setScrambleStr(initialScramble);
-  }, []);
+    if (initialScrambleExecutedRef.current) return;
 
-  // --- Scramble Puzzle (Magic Wand 🪄) ---
-  const handleScramble = useCallback(() => {
-    if (!engineRef.current || isScrambling) return;
+    const tryRunInitialScramble = () => {
+      if (initialScrambleExecutedRef.current) return;
+      if (engineRef.current) {
+        initialScrambleExecutedRef.current = true;
+        runAnimatedScramble();
+      } else {
+        setTimeout(tryRunInitialScramble, 150);
+      }
+    };
 
-    // Reset timer and move count
+    // Give 1.1s so user clearly sees the pristine solved cube first, then start animated scramble!
+    const timer = setTimeout(tryRunInitialScramble, 1100);
+
+    return () => clearTimeout(timer);
+  }, [runAnimatedScramble]);
+
+  // --- Optimal Star Solver ("زر النجمة يقوم بحل المكعب باقل حركات ممكنة") ---
+  const handleAutoSolve = useCallback(() => {
+    if (!engineRef.current || isScrambling || isSolving) return;
+
+    // Check if already solved
+    if (engineRef.current.checkIsSolved()) {
+      sound.playVictoryFanfare();
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.55 },
+        });
+      } catch {}
+      return;
+    }
+
+    setIsSolving(true);
+
+    // Stop solving timer if running
     if (timerRafRef.current) cancelAnimationFrame(timerRafRef.current);
     if (inspectionIntervalRef.current) clearInterval(inspectionIntervalRef.current);
-    setTimerState('idle');
-    setTimeMs(0);
-    setMoveCount(0);
-    setMoveHistory([]);
-    setUndoStack([]);
 
-    const newScramble = generateScramble(22);
-    setScrambleStr(newScramble);
-    setIsScrambling(true);
+    // Solve with minimal moves using optimal Kociemba solver
+    const solutionMoves = findMinimalSolution(scrambleStr, moveHistory);
 
-    // Reset cube to solved first
-    engineRef.current.resetToSolved();
+    if (solutionMoves.length === 0) {
+      setIsSolving(false);
+      return;
+    }
 
-    // Fast-apply scramble moves with slight stagger for satisfying speedcube look
-    const moves = parseAlgorithm(newScramble);
-    let i = 0;
-    const interval = setInterval(() => {
-      if (!engineRef.current || i >= moves.length) {
-        clearInterval(interval);
-        setIsScrambling(false);
-        sound.playClick(1.3);
+    setSolutionMovesRemaining(solutionMoves.length);
+
+    const prevSpeed = preferences.moveSpeed;
+    engineRef.current.setMoveSpeed(135);
+    engineRef.current.isProgrammatic = true;
+
+    let idx = 0;
+    const stepSolve = () => {
+      if (!engineRef.current) {
+        setIsSolving(false);
         return;
       }
-      engineRef.current.executeMove(moves[i], true); // instant move for fast scramble
-      sound.playClick(0.9 + (i % 4) * 0.1);
-      i++;
-    }, 28);
-  }, [isScrambling]);
 
-  // --- Reset Cube (Circular Arrow 🔄) ---
+      if (idx >= solutionMoves.length) {
+        setIsSolving(false);
+        setSolutionMovesRemaining(0);
+        if (engineRef.current) {
+          engineRef.current.isProgrammatic = false;
+          engineRef.current.setMoveSpeed(prevSpeed);
+        }
+
+        const isNowSolved = engineRef.current ? engineRef.current.checkIsSolved() : true;
+        if (isNowSolved) {
+          setTimerState('solved');
+          sound.playVictoryFanfare();
+          try {
+            confetti({
+              particleCount: 110,
+              spread: 85,
+              origin: { y: 0.55 },
+              colors: ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#ffffff'],
+            });
+          } catch {}
+        }
+        return;
+      }
+
+      const move = solutionMoves[idx];
+      idx++;
+      setSolutionMovesRemaining(solutionMoves.length - idx);
+      setMoveCount((prev) => prev + 1);
+      sound.playClick(1.0 + (idx % 4) * 0.1);
+      engineRef.current.executeMove(move, false);
+
+      setTimeout(stepSolve, 145);
+    };
+
+    stepSolve();
+  }, [isScrambling, isSolving, scrambleStr, moveHistory, preferences.moveSpeed]);
+
+  // --- Reset Cube (Clean Solve Reset) ---
   const handleReset = useCallback(() => {
-    if (!engineRef.current) return;
+    if (!engineRef.current || isScrambling || isSolving) return;
     if (timerRafRef.current) cancelAnimationFrame(timerRafRef.current);
     if (inspectionIntervalRef.current) clearInterval(inspectionIntervalRef.current);
 
@@ -119,7 +241,7 @@ export default function App() {
     setMoveCount(0);
     setMoveHistory([]);
     setUndoStack([]);
-  }, []);
+  }, [isScrambling, isSolving]);
 
   // --- Timer Controls ---
   const startSolvingTimer = useCallback(() => {
@@ -334,7 +456,7 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
-      {/* 3D WebGL Canvas with Left (<) & Right (>) Rotation Chevrons */}
+      {/* 3D WebGL Canvas */}
       <CubeCanvas
         engineRef={engineRef}
         theme={theme}
@@ -343,18 +465,20 @@ export default function App() {
         sensitivity={preferences.gestureSensitivity}
         onMoveFinished={handleMoveFinished}
         onFirstMoveStart={handleFirstMoveStart}
-        disabled={isScrambling}
+        disabled={isScrambling || isSolving}
       />
 
-      {/* Google Doodle Bottom Bar: Move Counter + Timer + 3-Button Action Pill */}
+      {/* Google Doodle Bottom Bar: Move Counter + Timer + Action Pill */}
       <GoogleDoodleBottomBar
         moveCount={moveCount}
         timeMs={timeMs}
         timerState={timerState}
         scrambleStr={scrambleStr}
         isScrambling={isScrambling}
-        onScramble={handleScramble}
-        onReset={handleReset}
+        isSolving={isSolving}
+        solutionMovesRemaining={solutionMovesRemaining}
+        onAutoSolve={handleAutoSolve}
+        onAnimatedScramble={() => runAnimatedScramble()}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenStats={() => setIsStatsOpen(true)}
         onTimerStart={handleTimerStart}

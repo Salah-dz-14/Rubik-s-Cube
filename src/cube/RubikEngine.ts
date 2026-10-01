@@ -70,6 +70,9 @@ export class RubikEngine {
   // Callbacks
   public onMoveFinished: MoveCallback | null = null;
   public onFirstMoveStart: (() => void) | null = null;
+  public onMoveStep: ((move: Move, remaining: number) => void) | null = null;
+  public onQueueEmpty: (() => void) | null = null;
+  public isProgrammatic: boolean = false;
 
   // Interaction mode toggle: 'slice' or 'orbit'
   public interactionMode: 'slice' | 'orbit' = 'slice';
@@ -130,22 +133,22 @@ export class RubikEngine {
   }
 
   private setupLighting() {
-    // Ambient light with subtle warmth
-    const ambient = new THREE.AmbientLight(0xffffff, 0.85);
+    // Ambient light - pure neutral white, higher intensity for bright vibrant colors
+    const ambient = new THREE.AmbientLight(0xffffff, 1.15);
     this.scene.add(ambient);
 
-    // Key directional light
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.25);
-    keyLight.position.set(5, 10, 7);
+    // Key directional light - crisp bright top-right
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
+    keyLight.position.set(6, 12, 8);
     this.scene.add(keyLight);
 
-    // Secondary fill light from opposite angle
-    const fillLight = new THREE.DirectionalLight(0xa5b4fc, 0.65);
-    fillLight.position.set(-6, -8, -5);
+    // Secondary fill light from opposite angle - neutral pure white
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    fillLight.position.set(-6, -7, -6);
     this.scene.add(fillLight);
 
     // Rim light from bottom-left for edge depth
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.4);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.45);
     rimLight.position.set(-8, 5, -6);
     this.scene.add(rimLight);
   }
@@ -179,21 +182,22 @@ export class RubikEngine {
 
   /**
    * Generates a canvas texture with a rounded-rectangle sticker tile.
+   * Features distinct rounded corners and vibrant glossy highlights.
    */
   private createStickerTexture(colorHex: string, label: string = ''): THREE.CanvasTexture {
-    const size = 256;
+    const size = 512;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d')!;
 
-    // Plastic base border
+    // Plastic base border (clean dark seam between cubies)
     ctx.fillStyle = this.theme.colors.border;
     ctx.fillRect(0, 0, size, size);
 
-    // Rounded sticker tile
-    const pad = 12;
-    const radius = 24;
+    // Rounded sticker tile with noticeably rounded corners as requested
+    const pad = 24;
+    const radius = 64; // Beautiful rounded squircle corners
     const w = size - pad * 2;
     const h = size - pad * 2;
 
@@ -202,26 +206,29 @@ export class RubikEngine {
     ctx.fillStyle = colorHex;
     ctx.fill();
 
-    // Inner bevel / gloss highlight
+    // Vibrant, clean semi-gloss shine (no heavy dark mud at bottom!)
     const gradient = ctx.createLinearGradient(pad, pad, pad, pad + h);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
-    gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.04)');
-    gradient.addColorStop(0.85, 'rgba(0, 0, 0, 0.0)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.32)');
+    gradient.addColorStop(0.22, 'rgba(255, 255, 255, 0.10)');
+    gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.0)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.04)');
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.roundRect(pad, pad, w, h, radius);
     ctx.fill();
 
-    // Subtle inner border ring
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
-    ctx.lineWidth = 3;
+    // Subtle edge highlight for clean 3D realism
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 4;
     ctx.stroke();
 
     // Optional center face label (U, D, L, R, F, B)
     if (this.showFaceLabels && label) {
-      ctx.fillStyle = colorHex === '#FFFFFF' || colorHex.toLowerCase() === '#f8fafc' || colorHex === '#FEF08A' || colorHex === '#FFFF00' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
-      ctx.font = 'bold 72px system-ui, -apple-system, sans-serif';
+      ctx.fillStyle =
+        colorHex === '#FFFFFF' || colorHex.toLowerCase() === '#f8fafc' || colorHex.toLowerCase().includes('ffd')
+          ? 'rgba(0,0,0,0.6)'
+          : 'rgba(255,255,255,0.9)';
+      ctx.font = 'bold 140px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(label, size / 2, size / 2);
@@ -243,8 +250,8 @@ export class RubikEngine {
       const texture = this.createStickerTexture(colorHex, label);
       return new THREE.MeshStandardMaterial({
         map: texture,
-        roughness: 0.35,
-        metalness: 0.05,
+        roughness: 0.22,
+        metalness: 0.02,
       });
     };
 
@@ -350,8 +357,8 @@ export class RubikEngine {
     this.currentRotatingMove = move;
     this.animationProgress = 0;
 
-    // Notify first move start if timer is idle (only for real slice turns, not whole cube rotation)
-    if (!move.isWholeCube && this.onFirstMoveStart) {
+    // Notify first move start if timer is idle (only for real slice turns, not whole cube rotation, and not programmatic)
+    if (!move.isWholeCube && this.onFirstMoveStart && !this.isProgrammatic) {
       this.onFirstMoveStart();
     }
 
@@ -529,9 +536,15 @@ export class RubikEngine {
       this.onMoveFinished(finishedMove, solved);
     }
 
+    if (this.onMoveStep) {
+      this.onMoveStep(finishedMove, this.moveQueue.length);
+    }
+
     // Process next queued move if any
     if (this.moveQueue.length > 0) {
       this.processNextMove();
+    } else if (this.onQueueEmpty) {
+      this.onQueueEmpty();
     }
   }
 
@@ -599,6 +612,128 @@ export class RubikEngine {
     return true;
   }
 
+  /**
+   * Reads 3D cube stickers and constructs the exact 54-char Kociemba facelet string
+   * formatted as U1..U9, R1..R9, F1..F9, D1..D9, L1..L9, B1..B9.
+   */
+  public getFaceletString(): string | null {
+    // Centers define the reference color for each face
+    const centerNormals: { face: FaceName; pos: [number, number, number] }[] = [
+      { face: 'U', pos: [0, 1, 0] },
+      { face: 'D', pos: [0, -1, 0] },
+      { face: 'L', pos: [-1, 0, 0] },
+      { face: 'R', pos: [1, 0, 0] },
+      { face: 'F', pos: [0, 0, 1] },
+      { face: 'B', pos: [0, 0, -1] },
+    ];
+
+    const getStickerMat = (x: number, y: number, z: number, normal: THREE.Vector3): number | null => {
+      for (const cubie of this.cubies) {
+        const grid = this.getCubieGridPosition(cubie);
+        if (grid.x === x && grid.y === y && grid.z === z) {
+          const localDir = normal.clone().applyQuaternion(cubie.quaternion.clone().invert());
+          let matIdx = 0;
+          if (Math.round(localDir.x) === 1) matIdx = 0; // R
+          else if (Math.round(localDir.x) === -1) matIdx = 1; // L
+          else if (Math.round(localDir.y) === 1) matIdx = 2; // U
+          else if (Math.round(localDir.y) === -1) matIdx = 3; // D
+          else if (Math.round(localDir.z) === 1) matIdx = 4; // F
+          else if (Math.round(localDir.z) === -1) matIdx = 5; // B
+          return matIdx;
+        }
+      }
+      return null;
+    };
+
+    // Map each face to its center material index
+    const matToFace = new Map<number, FaceName>();
+    for (const cn of centerNormals) {
+      const normal = new THREE.Vector3(...cn.pos);
+      const mat = getStickerMat(cn.pos[0], cn.pos[1], cn.pos[2], normal);
+      if (mat === null) return null;
+      matToFace.set(mat, cn.face);
+    }
+
+    // Standard Kociemba 54 facelet coordinates: U, R, F, D, L, B
+    const faceGroups: { face: FaceName; normal: THREE.Vector3; coords: [number, number, number][] }[] = [
+      {
+        face: 'U',
+        normal: new THREE.Vector3(0, 1, 0),
+        coords: [
+          [-1, 1, -1], [0, 1, -1], [1, 1, -1],
+          [-1, 1, 0],  [0, 1, 0],  [1, 1, 0],
+          [-1, 1, 1],  [0, 1, 1],  [1, 1, 1],
+        ],
+      },
+      {
+        face: 'R',
+        normal: new THREE.Vector3(1, 0, 0),
+        coords: [
+          [1, 1, 1],  [1, 1, 0],  [1, 1, -1],
+          [1, 0, 1],  [1, 0, 0],  [1, 0, -1],
+          [1, -1, 1], [1, -1, 0], [1, -1, -1],
+        ],
+      },
+      {
+        face: 'F',
+        normal: new THREE.Vector3(0, 0, 1),
+        coords: [
+          [-1, 1, 1],  [0, 1, 1],  [1, 1, 1],
+          [-1, 0, 1],  [0, 0, 1],  [1, 0, 1],
+          [-1, -1, 1], [0, -1, 1], [1, -1, 1],
+        ],
+      },
+      {
+        face: 'D',
+        normal: new THREE.Vector3(0, -1, 0),
+        coords: [
+          [-1, -1, 1],  [0, -1, 1],  [1, -1, 1],
+          [-1, -1, 0],  [0, -1, 0],  [1, -1, 0],
+          [-1, -1, -1], [0, -1, -1], [1, -1, -1],
+        ],
+      },
+      {
+        face: 'L',
+        normal: new THREE.Vector3(-1, 0, 0),
+        coords: [
+          [-1, 1, -1],  [-1, 1, 0],  [-1, 1, 1],
+          [-1, 0, -1],  [-1, 0, 0],  [-1, 0, 1],
+          [-1, -1, -1], [-1, -1, 0], [-1, -1, 1],
+        ],
+      },
+      {
+        face: 'B',
+        normal: new THREE.Vector3(0, 0, -1),
+        coords: [
+          [1, 1, -1],  [0, 1, -1],  [-1, 1, -1],
+          [1, 0, -1],  [0, 0, -1],  [-1, 0, -1],
+          [1, -1, -1], [0, -1, -1], [-1, -1, -1],
+        ],
+      },
+    ];
+
+    let result = '';
+    for (const group of faceGroups) {
+      for (const [x, y, z] of group.coords) {
+        const mat = getStickerMat(x, y, z, group.normal);
+        if (mat === null) return null;
+        const faceChar = matToFace.get(mat);
+        if (!faceChar) return null;
+        result += faceChar;
+      }
+    }
+
+    return result;
+  }
+
+  public clearQueue() {
+    this.moveQueue = [];
+  }
+
+  public getQueueLength(): number {
+    return this.moveQueue.length + (this.isAnimating ? 1 : 0);
+  }
+
   public resetToSolved() {
     this.moveQueue = [];
     this.isAnimating = false;
@@ -609,25 +744,54 @@ export class RubikEngine {
     this.buildCube();
   }
 
-  // --- View Orbit & Gestures (Unconstrained 3D Trackball - Zero Limits) ---
+  // --- View Orbit & Gestures (Smart 3-Face Perspective Snapping) ---
+
+  /**
+   * Snaps the camera view to an optimal 3-face perspective (isometric/trimetric),
+   * ensuring that 3 faces (Top/Bottom + 2 adjacent sides) are always clearly visible,
+   * never settling on a single flat face.
+   */
+  public snapToMultiFaceView() {
+    const camDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.targetOrientation).normalize();
+
+    // Elevation (pitch): Maintain clear top or bottom face visibility (~30 degrees)
+    const pitch = Math.asin(Math.max(-1, Math.min(1, camDir.y)));
+    const targetPitch = pitch >= 0 ? 0.52 : -0.52;
+
+    // Azimuth (yaw): Snap to 45°, 135°, 225°, or 315° where two side faces are equally visible
+    const azimuth = Math.atan2(camDir.x, camDir.z);
+    const base = Math.PI / 4;
+    const step = Math.PI / 2;
+    const targetAzimuth = Math.round((azimuth - base) / step) * step + base;
+
+    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAzimuth);
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -targetPitch);
+    this.targetOrientation.copy(qYaw).multiply(qPitch).normalize();
+  }
 
   public resetCameraView(yellowOnTop: boolean = false) {
     this.targetDistance = 9.4;
-    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4 + 0.15);
-    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 6 + 0.05);
-    this.targetOrientation.copy(qYaw).multiply(qPitch).normalize();
+    const targetPitch = yellowOnTop ? -0.52 : 0.52;
+    const targetAzimuth = Math.PI / 4; // 45°: Top, Front, Right clearly visible
 
-    if (yellowOnTop) {
-      // Flip view 180 degrees so Yellow is on top
-      this.flipCubeUpsideDown();
-    }
+    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAzimuth);
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -targetPitch);
+    this.targetOrientation.copy(qYaw).multiply(qPitch).normalize();
   }
 
   public flipCubeUpsideDown() {
-    // Rotates the view 180 degrees vertically so bottom and top faces swap places
-    const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.cameraOrientation);
-    const q = new THREE.Quaternion().setFromAxisAngle(camRight, Math.PI);
-    this.targetOrientation.premultiply(q).normalize();
+    const camDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.targetOrientation).normalize();
+    const pitch = Math.asin(Math.max(-1, Math.min(1, camDir.y)));
+    const targetPitch = pitch >= 0 ? -0.52 : 0.52;
+
+    const azimuth = Math.atan2(camDir.x, camDir.z);
+    const base = Math.PI / 4;
+    const step = Math.PI / 2;
+    const targetAzimuth = Math.round((azimuth - base) / step) * step + base;
+
+    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAzimuth);
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -targetPitch);
+    this.targetOrientation.copy(qYaw).multiply(qPitch).normalize();
   }
 
   public rotateViewBy(deltaX: number, deltaY: number) {
@@ -639,17 +803,35 @@ export class RubikEngine {
   }
 
   public rotateView90(dir: 1 | -1) {
-    // Smooth 90 degree horizontal view rotation
-    const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.cameraOrientation);
-    const q = new THREE.Quaternion().setFromAxisAngle(camUp, dir * (Math.PI / 2));
-    this.targetOrientation.premultiply(q).normalize();
+    // Rotates horizontally by 90° from one 3-face view to the next 3-face view
+    const camDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.targetOrientation).normalize();
+    const pitch = Math.asin(Math.max(-1, Math.min(1, camDir.y)));
+    const targetPitch = pitch >= 0 ? 0.52 : -0.52;
+
+    const azimuth = Math.atan2(camDir.x, camDir.z);
+    const base = Math.PI / 4;
+    const step = Math.PI / 2;
+    const currentSnappedAzimuth = Math.round((azimuth - base) / step) * step + base;
+    const nextAzimuth = currentSnappedAzimuth + dir * (Math.PI / 2);
+
+    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), nextAzimuth);
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -targetPitch);
+    this.targetOrientation.copy(qYaw).multiply(qPitch).normalize();
   }
 
   public tiltView90(dir: 1 | -1) {
-    // Smooth 90 degree vertical view rotation (can bring Yellow face directly to top!)
-    const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.cameraOrientation);
-    const q = new THREE.Quaternion().setFromAxisAngle(camRight, dir * (Math.PI / 2));
-    this.targetOrientation.premultiply(q).normalize();
+    // Toggles between viewing from above (+30°) and viewing from below (-30°)
+    const camDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.targetOrientation).normalize();
+    const azimuth = Math.atan2(camDir.x, camDir.z);
+    const base = Math.PI / 4;
+    const step = Math.PI / 2;
+    const targetAzimuth = Math.round((azimuth - base) / step) * step + base;
+
+    const targetPitch = dir > 0 ? 0.52 : -0.52;
+
+    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAzimuth);
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -targetPitch);
+    this.targetOrientation.copy(qYaw).multiply(qPitch).normalize();
   }
 
   private updateCameraPosition() {
@@ -808,11 +990,16 @@ export class RubikEngine {
   private onPointerUp(e: PointerEvent) {
     if (this.secondTouch && this.secondTouch.id === e.pointerId) {
       this.secondTouch = null;
+      this.snapToMultiFaceView();
       return;
     }
 
     if (this.activeTouch && this.activeTouch.pointerId === e.pointerId) {
+      const wasBackgroundDrag = this.activeTouch.isBackgroundDrag;
       this.activeTouch = null;
+      if (wasBackgroundDrag) {
+        this.snapToMultiFaceView();
+      }
     }
   }
 
