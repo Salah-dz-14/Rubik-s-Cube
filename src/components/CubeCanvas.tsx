@@ -44,6 +44,12 @@ export const CubeCanvas: React.FC<CubeCanvasProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (!engineRef.current) return;
+    engineRef.current.onMoveFinished = onMoveFinished;
+    engineRef.current.onFirstMoveStart = onFirstMoveStart;
+  }, [engineRef, onMoveFinished, onFirstMoveStart]);
+
   // Update theme when changed
   useEffect(() => {
     if (engineRef.current) {
@@ -57,6 +63,12 @@ export const CubeCanvas: React.FC<CubeCanvasProps> = ({
       engineRef.current.setMoveSpeed(moveSpeed);
     }
   }, [moveSpeed]);
+
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.sensitivityMultiplier = sensitivity;
+    }
+  }, [sensitivity]);
 
   return (
     <div className="relative w-full h-full flex-1 flex items-center justify-center overflow-hidden touch-none select-none">

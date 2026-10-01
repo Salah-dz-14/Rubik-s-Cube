@@ -46,6 +46,7 @@ export const AlgorithmHelperModal: React.FC<AlgorithmHelperModalProps> = ({
             <ul className="list-disc list-inside space-y-1 text-slate-300 leading-relaxed">
               <li><strong>Swipe any sticker:</strong> Turns that slice in the direction of your swipe.</li>
               <li><strong>Drag on the background:</strong> Smoothly spins the 3D cube in any direction (360°).</li>
+              <li><strong>Spacebar or timer:</strong> Start inspection, start the solve, or stop an attempt as DNF.</li>
               <li><strong>Side Chevrons (&lt; and &gt;):</strong> Rotates the cube view 90° left or right.</li>
               <li><strong>Purple Undo button (top-left):</strong> Reverses your previous move.</li>
               <li><strong>Magic Wand button (bottom):</strong> Scrambles the cube.</li>

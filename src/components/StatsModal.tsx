@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CubeStats, SolveRecord } from '../types/cube';
-import { formatTime } from '../utils/stats';
+import { effectiveSolveTime, formatSolveTime, formatTime } from '../utils/stats';
 import { X, Trophy, Flame, BarChart3, Trash2, Copy, Check, Download, AlertTriangle } from 'lucide-react';
 
 interface StatsModalProps {
@@ -183,7 +183,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {solves.map((solve, idx) => {
                   const solveNum = solves.length - idx;
-                  const isPB = stats.bestSingle === solve.timeMs;
+                  const isPB = stats.bestSingle === effectiveSolveTime(solve);
 
                   return (
                     <div
@@ -199,7 +199,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                                 isPB ? 'text-amber-400' : 'text-slate-100'
                               }`}
                             >
-                              {formatTime(solve.timeMs)}
+                              {formatSolveTime(solve.timeMs, solve.penalty)}
                             </span>
                             {isPB && (
                               <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">

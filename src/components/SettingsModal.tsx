@@ -140,6 +140,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               Gameplay & Mechanics
             </span>
 
+            {/* Gesture Sensitivity */}
+            <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/60">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-semibold text-white">Gesture Sensitivity</span>
+                </div>
+                <span className="text-xs font-mono text-blue-400">{preferences.gestureSensitivity.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={preferences.gestureSensitivity}
+                onChange={(e) => update('gestureSensitivity', Number(e.target.value))}
+                className="w-full accent-blue-500 cursor-pointer"
+                aria-label="Gesture sensitivity"
+              />
+            </div>
+
             {/* Turn Speed */}
             <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/60">
               <div className="flex items-center justify-between mb-2">

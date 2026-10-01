@@ -31,11 +31,14 @@ export interface ColorTheme {
 export interface SolveRecord {
   id: string;
   timeMs: number;
+  penalty?: SolvePenalty;
   scramble: string;
   date: number; // timestamp
   movesCount: number;
   tps: number; // turns per second
 }
+
+export type SolvePenalty = 'none' | 'plus2' | 'dnf';
 
 export interface CubeStats {
   bestSingle: number | null;
@@ -47,7 +50,7 @@ export interface CubeStats {
   averageTime: number | null;
 }
 
-export type TimerState = 'idle' | 'holding' | 'ready' | 'inspecting' | 'running' | 'solved';
+export type TimerState = 'idle' | 'holding' | 'ready' | 'inspecting' | 'running' | 'solved' | 'stopped';
 
 export interface UserPreferences {
   theme: ThemeName;

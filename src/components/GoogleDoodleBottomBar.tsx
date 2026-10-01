@@ -1,17 +1,18 @@
 import React from 'react';
-import { Star, RotateCcw, HelpCircle, Trophy, Loader2 } from 'lucide-react';
-import { TimerState } from '../types/cube';
-import { formatTime } from '../utils/stats';
+import { Star, RotateCcw, HelpCircle } from 'lucide-react';
+import { SolvePenalty, TimerState } from '../types/cube';
+import { formatSolveTime, formatTime } from '../utils/stats';
 
 interface GoogleDoodleBottomBarProps {
   moveCount: number;
   timeMs: number;
   timerState: TimerState;
-  scrambleStr: string;
+  penalty: SolvePenalty;
   isScrambling: boolean;
   isSolving: boolean;
-  solutionMovesRemaining?: number;
   onAutoSolve: () => void;
+  onTimerAction: () => void;
+  onSetPenalty: (penalty: SolvePenalty) => void;
   onAnimatedScramble: () => void;
   onOpenGuide: () => void;
   onOpenStats: () => void;
@@ -21,56 +22,25 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
   moveCount,
   timeMs,
   timerState,
-  scrambleStr,
+  penalty,
   isScrambling,
   isSolving,
-  solutionMovesRemaining,
   onAutoSolve,
   onAnimatedScramble,
   onOpenGuide,
   onOpenStats,
+  onTimerAction,
+  onSetPenalty,
 }) => {
   const isBusy = isScrambling || isSolving;
+  const timerDisplay = timerState === 'inspecting'
+    ? timeMs >= 17000 ? 'DNF' : timeMs > 15000 ? '+2' : formatTime(15000 - timeMs)
+    : timerState === 'solved' ? formatSolveTime(timeMs, penalty)
+    : timerState === 'stopped' ? 'DNF'
+    : formatTime(timeMs);
 
   return (
     <div className="w-full flex flex-col items-center pb-6 sm:pb-8 px-4 z-20 pointer-events-auto select-none">
-      {/* Solved celebration banner */}
-      {timerState === 'solved' && !isBusy && (
-        <div className="mb-2 px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-bold animate-bounce flex items-center gap-1.5 shadow-sm">
-          <Trophy className="w-4 h-4 text-emerald-500" />
-          <span>تم الحل في {moveCount} حركة! ({formatTime(timeMs)})</span>
-        </div>
-      )}
-
-      {/* Solving / Scrambling active status indicator */}
-      {isSolving && (
-        <div className="mb-2 px-4 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-2 animate-pulse shadow-sm">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
-          <span>جاري الحل بأقل حركات ممكنة {solutionMovesRemaining ? `(${solutionMovesRemaining} متبقية)` : ''}...</span>
-        </div>
-      )}
-
-      {isScrambling && (
-        <div className="mb-2 px-4 py-1 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center gap-2 animate-pulse shadow-sm">
-          <RotateCcw className="w-3.5 h-3.5 animate-spin text-blue-500" />
-          <span>جاري خلط المكعب بأنيميشن...</span>
-        </div>
-      )}
-
-      {/* Ready to solve tip */}
-      {!isBusy && timerState === 'idle' && moveCount === 0 && scrambleStr && (
-        <div className="mb-2 px-3.5 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800/60 border border-slate-300/40 dark:border-slate-700/40 text-slate-600 dark:text-slate-300 text-xs font-medium flex items-center gap-1.5 shadow-xs">
-          <span>✨ المكعب جاهز! حرك أي وجه لبدء الحل والمؤقت</span>
-        </div>
-      )}
-
-      {/* Initial solved waiting state */}
-      {!isBusy && timerState === 'idle' && moveCount === 0 && !scrambleStr && (
-        <div className="mb-2 px-3.5 py-1 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1.5 animate-pulse shadow-xs">
-          <span>المكعب محلول... سيبدأ الخلط التلقائي بعد لحظات</span>
-        </div>
-      )}
-
       {/* Main Google Doodle Controls Row: Move Count + Timer on Left, Action Pill on Right */}
       <div className="w-full max-w-lg flex items-center justify-between gap-4 px-2 sm:px-4">
         {/* Left: Big Google Doodle Move Counter & Time (Display only; starts upon moving cube) */}
@@ -86,17 +56,24 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
           </div>
 
           {/* Running or Elapsed Time */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/40 dark:border-slate-700/50">
+          <button
+            type="button"
+            onClick={onTimerAction}
+            disabled={isBusy || timerState === 'solved' || timerState === 'stopped'}
+            className="min-w-20 flex items-center justify-center px-2.5 py-1 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/40 dark:border-slate-700/50 disabled:cursor-default"
+            title={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
+            aria-label={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
+          >
             <span
               className={`font-mono text-sm sm:text-base font-semibold ${
-                timerState === 'running'
+                timerState === 'running' || timerState === 'inspecting'
                   ? 'text-blue-600 dark:text-blue-400 animate-pulse'
                   : 'text-slate-600 dark:text-slate-300'
               }`}
             >
-              {formatTime(timeMs)}
+              {timerDisplay}
             </span>
-          </div>
+          </button>
         </div>
 
         {/* Right: Google Doodle Action Pill */}
@@ -142,6 +119,26 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
           </button>
         </div>
       </div>
+
+      {timerState === 'solved' && (
+        <div className="mt-2 flex items-center gap-1 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 p-1" role="group" aria-label="Solve penalty">
+          {(['none', 'plus2', 'dnf'] as SolvePenalty[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onSetPenalty(option)}
+              aria-pressed={penalty === option}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                penalty === option
+                  ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white'
+              }`}
+            >
+              {option === 'none' ? 'OK' : option === 'plus2' ? '+2' : 'DNF'}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -55,7 +55,6 @@ export class RubikEngine {
   private targetDistance: number = 9.4;
   private cameraOrientation = new THREE.Quaternion();
   private targetOrientation = new THREE.Quaternion();
-  private shadowMesh: THREE.Mesh | null = null;
 
   private isDraggingView: boolean = false;
   private activeTouch: TouchState | null = null;
@@ -109,7 +108,6 @@ export class RubikEngine {
 
     // 4. Lights
     this.setupLighting();
-    this.createContactShadow();
 
     // 5. Materials
     this.coreMaterial = new THREE.MeshStandardMaterial({
@@ -151,33 +149,6 @@ export class RubikEngine {
     const rimLight = new THREE.DirectionalLight(0xffffff, 0.45);
     rimLight.position.set(-8, 5, -6);
     this.scene.add(rimLight);
-  }
-
-  private createContactShadow() {
-    const size = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
-
-    const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0.42)');
-    grad.addColorStop(0.35, 'rgba(0, 0, 0, 0.22)');
-    grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.06)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const geo = new THREE.PlaneGeometry(5.6, 5.6);
-    const mat = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      depthWrite: false,
-    });
-    this.shadowMesh = new THREE.Mesh(geo, mat);
-    this.scene.add(this.shadowMesh);
   }
 
   /**
@@ -970,12 +941,6 @@ export class RubikEngine {
     this.camera.up.set(0, 1, 0).applyQuaternion(this.cameraOrientation);
     this.camera.lookAt(0, 0, 0);
 
-    // Keep contact shadow ALWAYS directly beneath the cube relative to user's view
-    if (this.shadowMesh) {
-      const camUp = this.camera.up.clone().normalize();
-      this.shadowMesh.position.copy(camUp.clone().multiplyScalar(-1.85));
-      this.shadowMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), camUp);
-    }
   }
 
   // --- Pointer & Touch Interaction ---
@@ -1049,12 +1014,26 @@ export class RubikEngine {
   private onPointerMove(e: PointerEvent) {
     if (!this.activeTouch) return;
 
-    // Handle two-finger pinch and two-finger 360° orbit
-    if (this.secondTouch && this.secondTouch.id === e.pointerId) {
-      const prevSecondX = this.secondTouch.x;
-      const prevSecondY = this.secondTouch.y;
-      this.secondTouch.x = e.clientX;
-      this.secondTouch.y = e.clientY;
+    // Handle pinch and orbit from the combined movement of both pointers.
+    if (this.secondTouch) {
+      let firstDx = 0;
+      let firstDy = 0;
+      let secondDx = 0;
+      let secondDy = 0;
+
+      if (this.activeTouch.pointerId === e.pointerId) {
+        firstDx = e.clientX - this.activeTouch.currentX;
+        firstDy = e.clientY - this.activeTouch.currentY;
+        this.activeTouch.currentX = e.clientX;
+        this.activeTouch.currentY = e.clientY;
+      } else if (this.secondTouch.id === e.pointerId) {
+        secondDx = e.clientX - this.secondTouch.x;
+        secondDy = e.clientY - this.secondTouch.y;
+        this.secondTouch.x = e.clientX;
+        this.secondTouch.y = e.clientY;
+      } else {
+        return;
+      }
 
       const curDist = Math.hypot(this.secondTouch.x - this.activeTouch.currentX, this.secondTouch.y - this.activeTouch.currentY);
       if (this.initialPinchDist > 10 && curDist > 10) {
@@ -1062,9 +1041,8 @@ export class RubikEngine {
         this.targetDistance = Math.max(5.0, Math.min(14.0, this.initialPinchRadius * scale));
       }
 
-      // Two-finger drag allows full 360° unconstrained view rotation
-      const midDx = e.clientX - prevSecondX;
-      const midDy = e.clientY - prevSecondY;
+      const midDx = (firstDx + secondDx) / 2;
+      const midDy = (firstDy + secondDy) / 2;
       const orbitSpeed = 0.0075 * this.sensitivityMultiplier;
       const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.cameraOrientation);
       const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.cameraOrientation);
@@ -1118,6 +1096,14 @@ export class RubikEngine {
   }
 
   private onPointerUp(e: PointerEvent) {
+    if (e.type === 'pointercancel') {
+      const wasBackgroundDrag = this.activeTouch?.isBackgroundDrag;
+      this.activeTouch = null;
+      this.secondTouch = null;
+      if (wasBackgroundDrag) this.snapToMultiFaceView();
+      return;
+    }
+
     if (this.secondTouch && this.secondTouch.id === e.pointerId) {
       this.secondTouch = null;
       this.snapToMultiFaceView();

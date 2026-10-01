@@ -1,4 +1,4 @@
-import { CubeStats, SolveRecord, UserPreferences, ColorTheme } from '../types/cube';
+import { CubeStats, SolvePenalty, SolveRecord, UserPreferences, ColorTheme } from '../types/cube';
 
 export const THEMES: Record<string, ColorTheme> = {
   classic: {
@@ -141,6 +141,17 @@ export function formatTime(ms: number | null): string {
   return `${secStr}.${csStr}`;
 }
 
+export function effectiveSolveTime(solve: SolveRecord): number {
+  if (solve.penalty === 'dnf') return Infinity;
+  return solve.timeMs + (solve.penalty === 'plus2' ? 2000 : 0);
+}
+
+export function formatSolveTime(timeMs: number, penalty: SolvePenalty = 'none'): string {
+  if (penalty === 'dnf') return 'DNF';
+  const formattedTime = formatTime(timeMs + (penalty === 'plus2' ? 2000 : 0));
+  return penalty === 'plus2' ? `${formattedTime}+` : formattedTime;
+}
+
 /**
  * Compute Average of N (e.g. Ao5, Ao12).
  * In official WCA:
@@ -153,6 +164,7 @@ export function calculateAoN(times: number[], n: number): number | null {
   const sorted = [...sample].sort((a, b) => a - b);
   // drop min and max
   const trimmed = sorted.slice(1, -1);
+  if (trimmed.some((time) => !Number.isFinite(time))) return null;
   const sum = trimmed.reduce((acc, t) => acc + t, 0);
   return Math.round(sum / trimmed.length);
 }
@@ -170,8 +182,9 @@ export function computeCubeStats(solves: SolveRecord[]): CubeStats {
     };
   }
 
-  const times = solves.map((s) => s.timeMs);
-  const bestSingle = Math.min(...times);
+  const times = [...solves].reverse().map(effectiveSolveTime);
+  const finiteTimes = times.filter(Number.isFinite);
+  const bestSingle = finiteTimes.length > 0 ? Math.min(...finiteTimes) : null;
   const currentAo5 = calculateAoN(times, 5);
   const currentAo12 = calculateAoN(times, 12);
 
@@ -193,8 +206,8 @@ export function computeCubeStats(solves: SolveRecord[]): CubeStats {
     }
   }
 
-  const sumAll = times.reduce((a, b) => a + b, 0);
-  const averageTime = Math.round(sumAll / times.length);
+  const sumAll = finiteTimes.reduce((a, b) => a + b, 0);
+  const averageTime = finiteTimes.length > 0 ? Math.round(sumAll / finiteTimes.length) : null;
 
   return {
     bestSingle,

@@ -7,8 +7,7 @@ import { Header } from './components/Header';
 import { StatsModal } from './components/StatsModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AlgorithmHelperModal } from './components/AlgorithmHelperModal';
-import { OfflineIndicator } from './components/OfflineIndicator';
-import { FaceName, Move, SolveRecord, TimerState, UserPreferences } from './types/cube';
+import { FaceName, Move, SolvePenalty, SolveRecord, TimerState, UserPreferences } from './types/cube';
 import {
   THEMES,
   loadSavedSolves,
@@ -36,7 +35,6 @@ export default function App() {
   const [scrambleStr, setScrambleStr] = useState<string>('');
   const [isScrambling, setIsScrambling] = useState<boolean>(false);
   const [isSolving, setIsSolving] = useState<boolean>(false);
-  const [solutionMovesRemaining, setSolutionMovesRemaining] = useState<number>(0);
 
   // Move History & Undo/Redo
   const [moveHistory, setMoveHistory] = useState<Move[]>([]);
@@ -46,10 +44,14 @@ export default function App() {
   const [timerState, setTimerState] = useState<TimerState>('idle');
   const [timeMs, setTimeMs] = useState<number>(0);
   const [moveCount, setMoveCount] = useState<number>(0);
+  const [activeSolveId, setActiveSolveId] = useState<string | null>(null);
+  const [currentPenalty, setCurrentPenalty] = useState<SolvePenalty>('none');
 
   const timerStartTimestampRef = useRef<number | null>(null);
   const timerRafRef = useRef<number | null>(null);
   const inspectionIntervalRef = useRef<number | null>(null);
+  const inspectionStartTimestampRef = useRef<number | null>(null);
+  const pendingPenaltyRef = useRef<SolvePenalty>('none');
   const initialScrambleExecutedRef = useRef<boolean>(false);
 
   // Modals
@@ -70,6 +72,16 @@ export default function App() {
     sound.enabled = nextPrefs.soundEnabled;
   };
 
+  const saveSolveRecord = useCallback((record: SolveRecord) => {
+    setSolves((previous) => {
+      const next = [record, ...previous];
+      saveSolves(next);
+      return next;
+    });
+    setActiveSolveId(record.id);
+    setCurrentPenalty(record.penalty ?? 'none');
+  }, []);
+
   // --- Smooth Animated Scramble ("زر الرجوع في الاسفل يقوم بخلط المكعب لكن بانيميشن") ---
   const runAnimatedScramble = useCallback(
     (customScramble?: string) => {
@@ -78,9 +90,14 @@ export default function App() {
       // Reset timer and move counters
       if (timerRafRef.current) cancelAnimationFrame(timerRafRef.current);
       if (inspectionIntervalRef.current) clearInterval(inspectionIntervalRef.current);
+      timerStartTimestampRef.current = null;
+      inspectionStartTimestampRef.current = null;
+      pendingPenaltyRef.current = 'none';
       setTimerState('idle');
       setTimeMs(0);
       setMoveCount(0);
+      setActiveSolveId(null);
+      setCurrentPenalty('none');
       setMoveHistory([]);
       setUndoStack([]);
 
@@ -188,6 +205,15 @@ export default function App() {
     // Stop solving timer if running
     if (timerRafRef.current) cancelAnimationFrame(timerRafRef.current);
     if (inspectionIntervalRef.current) clearInterval(inspectionIntervalRef.current);
+    timerRafRef.current = null;
+    inspectionIntervalRef.current = null;
+    timerStartTimestampRef.current = null;
+    inspectionStartTimestampRef.current = null;
+    pendingPenaltyRef.current = 'none';
+    setTimerState('idle');
+    setTimeMs(0);
+    setActiveSolveId(null);
+    setCurrentPenalty('none');
 
     // Solve with minimal moves using optimal Kociemba solver
     const solutionMoves = findMinimalSolution(scrambleStr, moveHistory);
@@ -196,8 +222,6 @@ export default function App() {
       setIsSolving(false);
       return;
     }
-
-    setSolutionMovesRemaining(solutionMoves.length);
 
     const prevSpeed = preferences.moveSpeed;
     engineRef.current.setMoveSpeed(135);
@@ -212,7 +236,6 @@ export default function App() {
 
       if (idx >= solutionMoves.length) {
         setIsSolving(false);
-        setSolutionMovesRemaining(0);
         if (engineRef.current) {
           engineRef.current.isProgrammatic = false;
           engineRef.current.setMoveSpeed(prevSpeed);
@@ -220,7 +243,7 @@ export default function App() {
 
         const isNowSolved = engineRef.current ? engineRef.current.checkIsSolved() : true;
         if (isNowSolved) {
-          setTimerState('solved');
+          setTimerState('idle');
           sound.playVictoryFanfare();
           try {
             confetti({
@@ -236,7 +259,6 @@ export default function App() {
 
       const move = solutionMoves[idx];
       idx++;
-      setSolutionMovesRemaining(solutionMoves.length - idx);
       setMoveCount((prev) => prev + 1);
       sound.playClick(1.0 + (idx % 4) * 0.1);
       engineRef.current.executeMove(move, false);
@@ -252,23 +274,50 @@ export default function App() {
     if (!engineRef.current || isScrambling || isSolving) return;
     if (timerRafRef.current) cancelAnimationFrame(timerRafRef.current);
     if (inspectionIntervalRef.current) clearInterval(inspectionIntervalRef.current);
+    timerRafRef.current = null;
+    inspectionIntervalRef.current = null;
+    timerStartTimestampRef.current = null;
+    inspectionStartTimestampRef.current = null;
+    pendingPenaltyRef.current = 'none';
 
     engineRef.current.resetToSolved();
     setTimerState('idle');
     setTimeMs(0);
     setMoveCount(0);
+    setActiveSolveId(null);
+    setCurrentPenalty('none');
     setMoveHistory([]);
     setUndoStack([]);
   }, [isScrambling, isSolving]);
 
   // --- Timer Controls ---
+  const startInspection = useCallback(() => {
+    if (inspectionIntervalRef.current) clearInterval(inspectionIntervalRef.current);
+    const startedAt = performance.now();
+    inspectionStartTimestampRef.current = startedAt;
+    setTimerState('inspecting');
+    setTimeMs(0);
+    inspectionIntervalRef.current = window.setInterval(() => {
+      setTimeMs(performance.now() - startedAt);
+    }, 50);
+  }, []);
+
   const startSolvingTimer = useCallback(() => {
     if (inspectionIntervalRef.current) {
       clearInterval(inspectionIntervalRef.current);
       inspectionIntervalRef.current = null;
     }
 
+    if (inspectionStartTimestampRef.current !== null) {
+      const inspectionMs = performance.now() - inspectionStartTimestampRef.current;
+      pendingPenaltyRef.current = inspectionMs >= 17000 ? 'dnf' : inspectionMs > 15000 ? 'plus2' : 'none';
+      inspectionStartTimestampRef.current = null;
+    } else {
+      pendingPenaltyRef.current = 'none';
+    }
+
     setTimerState('running');
+    setTimeMs(0);
     timerStartTimestampRef.current = performance.now();
 
     const tick = () => {
@@ -281,19 +330,52 @@ export default function App() {
     timerRafRef.current = requestAnimationFrame(tick);
   }, []);
 
-  const handleTimerStart = useCallback(() => {
-    startSolvingTimer();
-  }, [startSolvingTimer]);
-
   const handleTimerStop = useCallback(() => {
+    if (timerState !== 'running') return;
     if (timerRafRef.current) {
       cancelAnimationFrame(timerRafRef.current);
       timerRafRef.current = null;
     }
+    const finalTimeMs = timerStartTimestampRef.current
+      ? Math.round(performance.now() - timerStartTimestampRef.current)
+      : timeMs;
     timerStartTimestampRef.current = null;
-    setTimerState('idle');
-  }, []);
+    setTimeMs(finalTimeMs);
+    setTimerState('stopped');
+    const tps = finalTimeMs > 0 ? Number((moveCount / (finalTimeMs / 1000)).toFixed(2)) : 0;
+    saveSolveRecord({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      timeMs: finalTimeMs,
+      penalty: 'dnf',
+      scramble: scrambleStr,
+      date: Date.now(),
+      movesCount: moveCount,
+      tps,
+    });
+  }, [timerState, timeMs, moveCount, scrambleStr, saveSolveRecord]);
 
+  const handleTimerAction = useCallback(() => {
+    if (!scrambleStr || isScrambling || isSolving) return;
+    if (timerState === 'idle') {
+      if (preferences.inspectionEnabled) startInspection();
+      else startSolvingTimer();
+    } else if (timerState === 'inspecting') {
+      startSolvingTimer();
+    } else if (timerState === 'running') {
+      handleTimerStop();
+    }
+  }, [scrambleStr, isScrambling, isSolving, timerState, preferences.inspectionEnabled, startInspection, startSolvingTimer, handleTimerStop]);
+
+  const handleSetPenalty = useCallback((penalty: SolvePenalty) => {
+    if (!activeSolveId) return;
+    const existingSolve = solves.find((solve) => solve.id === activeSolveId);
+    if (!existingSolve) return;
+    const updatedSolve = { ...existingSolve, penalty };
+    const nextSolves = solves.map((solve) => solve.id === activeSolveId ? updatedSolve : solve);
+    setSolves(nextSolves);
+    saveSolves(nextSolves);
+    setCurrentPenalty(penalty);
+  }, [activeSolveId, solves]);
   // --- Move Finished Callback & Solve Detection ---
   const handleMoveFinished = useCallback(
     (move: Move, isSolved: boolean) => {
@@ -351,28 +433,28 @@ export default function App() {
           const newRecord: SolveRecord = {
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             timeMs: finalTimeMs,
+            penalty: pendingPenaltyRef.current,
             scramble: scrambleStr,
             date: Date.now(),
             movesCount: currentMoves,
             tps,
           };
 
-          const nextSolves = [newRecord, ...solves];
-          setSolves(nextSolves);
-          saveSolves(nextSolves);
+          saveSolveRecord(newRecord);
+          pendingPenaltyRef.current = 'none';
         }
       }
     },
-    [timerState, timeMs, moveCount, scrambleStr, solves, preferences.hapticEnabled]
+    [timerState, timeMs, moveCount, scrambleStr, preferences.hapticEnabled, saveSolveRecord]
   );
 
   // Triggered when first move starts
   const handleFirstMoveStart = useCallback(() => {
-    if (isScrambling || isSolving) return;
-    if (timerState === 'idle') {
+    if (isScrambling || isSolving || !scrambleStr) return;
+    if (timerState === 'inspecting' || (timerState === 'idle' && preferences.autoStartOnMove)) {
       startSolvingTimer();
     }
-  }, [isScrambling, isSolving, timerState, startSolvingTimer]);
+  }, [isScrambling, isSolving, scrambleStr, timerState, preferences.autoStartOnMove, startSolvingTimer]);
 
   // Undo move (Top-left Purple Button)
   const handleUndo = useCallback(() => {
@@ -392,7 +474,18 @@ export default function App() {
   // Keyboard Shortcuts (Like Google Doodle)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLButtonElement ||
+        isStatsOpen || isSettingsOpen || isGuideOpen
+      ) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!e.repeat) handleTimerAction();
+        return;
+      }
 
       // Undo: Ctrl+Z or Cmd+Z
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -442,19 +535,25 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo]);
+  }, [handleUndo, handleTimerAction, isStatsOpen, isSettingsOpen, isGuideOpen]);
 
   // Delete single solve
   const handleDeleteSolve = (id: string) => {
     const updated = solves.filter((s) => s.id !== id);
     setSolves(updated);
     saveSolves(updated);
+    if (activeSolveId === id) {
+      setActiveSolveId(null);
+      setCurrentPenalty('none');
+    }
   };
 
   // Clear all solves
   const handleClearAllSolves = () => {
     setSolves([]);
     saveSolves([]);
+    setActiveSolveId(null);
+    setCurrentPenalty('none');
   };
 
   const isDark = preferences.darkMode;
@@ -495,18 +594,16 @@ export default function App() {
         moveCount={moveCount}
         timeMs={timeMs}
         timerState={timerState}
-        scrambleStr={scrambleStr}
+        penalty={currentPenalty}
         isScrambling={isScrambling}
         isSolving={isSolving}
-        solutionMovesRemaining={solutionMovesRemaining}
         onAutoSolve={handleAutoSolve}
+        onTimerAction={handleTimerAction}
+        onSetPenalty={handleSetPenalty}
         onAnimatedScramble={() => runAnimatedScramble()}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenStats={() => setIsStatsOpen(true)}
       />
-
-      {/* Offline Status Badge */}
-      <OfflineIndicator />
 
       {/* Modals */}
       <StatsModal
