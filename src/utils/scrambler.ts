@@ -7,10 +7,13 @@ const MODIFIERS = ['', "'", '2'];
 const OPPOSITE_FACE_AXIS: Record<FaceName, number> = {
   U: 0,
   D: 0,
+  E: 0,
   L: 1,
   R: 1,
+  M: 1,
   F: 2,
   B: 2,
+  S: 2,
 };
 
 /**
@@ -51,6 +54,8 @@ export function generateScramble(length: number = 22): string {
   return scrambleMoves.join(' ');
 }
 
+const ALL_SUPPORTED_FACES: FaceName[] = ['U', 'D', 'L', 'R', 'F', 'B', 'M', 'E', 'S'];
+
 /**
  * Parses a scramble or move notation string like "R U R' U' F2" into executable Move objects.
  */
@@ -59,7 +64,7 @@ export function parseNotation(moveStr: string): Move | null {
   if (!trimmed) return null;
 
   const faceChar = trimmed[0].toUpperCase() as FaceName;
-  if (!FACES.includes(faceChar)) return null;
+  if (!ALL_SUPPORTED_FACES.includes(faceChar)) return null;
 
   const suffix = trimmed.slice(1);
   let direction: 1 | -1 | 2 = 1;

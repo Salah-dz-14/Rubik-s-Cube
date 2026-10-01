@@ -106,12 +106,30 @@ export default function App() {
         }
 
         if (i >= moves.length) {
-          setIsScrambling(false);
-          if (engineRef.current) {
-            engineRef.current.isProgrammatic = false;
-            engineRef.current.setMoveSpeed(prevSpeed);
-          }
-          sound.playClick(1.35);
+          // Wait until the final move animation completes before handing control to user
+          const checkFinished = () => {
+            if (engineRef.current && engineRef.current.getQueueLength() > 0) {
+              setTimeout(checkFinished, 30);
+              return;
+            }
+
+            if (engineRef.current) {
+              engineRef.current.isProgrammatic = false;
+              engineRef.current.setMoveSpeed(prevSpeed);
+            }
+
+            setIsScrambling(false);
+            // Strictly 0: Scramble moves are never counted, only user moves!
+            setMoveCount(0);
+            setTimeMs(0);
+            setTimerState('idle');
+            setMoveHistory([]);
+            setUndoStack([]);
+            timerStartTimestampRef.current = null;
+            sound.playClick(1.35);
+          };
+
+          checkFinished();
           return;
         }
 
@@ -279,6 +297,9 @@ export default function App() {
   // --- Move Finished Callback & Solve Detection ---
   const handleMoveFinished = useCallback(
     (move: Move, isSolved: boolean) => {
+      // Strictly ignore any moves during automatic scramble or solving
+      if (isScrambling || isSolving) return;
+
       // Audio click
       sound.playClick();
       if (preferences.hapticEnabled && navigator.vibrate) {
@@ -347,10 +368,11 @@ export default function App() {
 
   // Triggered when first move starts
   const handleFirstMoveStart = useCallback(() => {
+    if (isScrambling || isSolving) return;
     if (timerState === 'idle') {
       startSolvingTimer();
     }
-  }, [timerState, startSolvingTimer]);
+  }, [isScrambling, isSolving, timerState, startSolvingTimer]);
 
   // Undo move (Top-left Purple Button)
   const handleUndo = useCallback(() => {
@@ -401,9 +423,9 @@ export default function App() {
         return;
       }
 
-      // Face turn keys: F, B, U, D, L, R
+      // Face turn keys: F, B, U, D, L, R, M, E, S
       const keyUpper = e.key.toUpperCase();
-      const validFaces: FaceName[] = ['F', 'B', 'U', 'D', 'L', 'R'];
+      const validFaces: FaceName[] = ['F', 'B', 'U', 'D', 'L', 'R', 'M', 'E', 'S'];
       if (validFaces.includes(keyUpper as FaceName)) {
         e.preventDefault();
         const dir: 1 | -1 = e.shiftKey ? -1 : 1;
@@ -481,8 +503,6 @@ export default function App() {
         onAnimatedScramble={() => runAnimatedScramble()}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenStats={() => setIsStatsOpen(true)}
-        onTimerStart={handleTimerStart}
-        onTimerStop={handleTimerStop}
       />
 
       {/* Offline Status Badge */}

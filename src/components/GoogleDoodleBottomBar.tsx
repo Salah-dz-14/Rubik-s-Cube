@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Star, RotateCcw, HelpCircle, Trophy, Copy, Check, Loader2 } from 'lucide-react';
+import React from 'react';
+import { Star, RotateCcw, HelpCircle, Trophy, Loader2 } from 'lucide-react';
 import { TimerState } from '../types/cube';
 import { formatTime } from '../utils/stats';
 
@@ -15,8 +15,6 @@ interface GoogleDoodleBottomBarProps {
   onAnimatedScramble: () => void;
   onOpenGuide: () => void;
   onOpenStats: () => void;
-  onTimerStart: () => void;
-  onTimerStop: () => void;
 }
 
 export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
@@ -31,28 +29,7 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
   onAnimatedScramble,
   onOpenGuide,
   onOpenStats,
-  onTimerStart,
-  onTimerStop,
 }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyScramble = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!scrambleStr) return;
-    navigator.clipboard.writeText(scrambleStr);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  const handleTimerToggle = () => {
-    if (isScrambling || isSolving) return;
-    if (timerState === 'running') {
-      onTimerStop();
-    } else if (timerState === 'idle' || timerState === 'solved') {
-      onTimerStart();
-    }
-  };
-
   const isBusy = isScrambling || isSolving;
 
   return (
@@ -96,15 +73,11 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
 
       {/* Main Google Doodle Controls Row: Move Count + Timer on Left, Action Pill on Right */}
       <div className="w-full max-w-lg flex items-center justify-between gap-4 px-2 sm:px-4">
-        {/* Left: Big Google Doodle Move Counter & Time */}
-        <div
-          onClick={handleTimerToggle}
-          className="flex items-baseline gap-3 cursor-pointer group"
-          title="انقر لبدء/إيقاف المؤقت"
-        >
+        {/* Left: Big Google Doodle Move Counter & Time (Display only; starts upon moving cube) */}
+        <div className="flex items-baseline gap-3">
           {/* Large Move Number */}
           <div className="flex items-baseline gap-1">
-            <span className="font-sans text-4xl sm:text-5xl font-light tracking-tight text-slate-800 dark:text-slate-100 group-hover:opacity-80 transition">
+            <span className="font-sans text-4xl sm:text-5xl font-light tracking-tight text-slate-800 dark:text-slate-100 transition">
               {moveCount}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -169,22 +142,6 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Subtle Scramble Notation pill */}
-      {scrambleStr && (
-        <div
-          onClick={handleCopyScramble}
-          className="mt-3 px-3 py-1 rounded-full bg-slate-200/50 dark:bg-slate-800/40 border border-slate-300/40 dark:border-slate-700/40 text-[11px] font-mono text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-1.5 cursor-pointer transition max-w-sm truncate"
-          title="انقر لنسخ صيغة الخلط (Scramble Notation)"
-        >
-          <span className="truncate">{scrambleStr}</span>
-          {copied ? (
-            <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-          ) : (
-            <Copy className="w-3 h-3 shrink-0 opacity-60" />
-          )}
-        </div>
-      )}
     </div>
   );
 };

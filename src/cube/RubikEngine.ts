@@ -335,12 +335,17 @@ export class RubikEngine {
   // --- Rotations & Moves Execution ---
 
   public executeMove(move: Move, instant: boolean = false) {
+    const moveWithProg: Move = {
+      ...move,
+      isProgrammatic: move.isProgrammatic !== undefined ? move.isProgrammatic : this.isProgrammatic,
+    };
+
     if (instant) {
-      this.applyMoveInstant(move);
+      this.applyMoveInstant(moveWithProg);
       return;
     }
 
-    this.moveQueue.push(move);
+    this.moveQueue.push(moveWithProg);
     if (!this.isAnimating) {
       this.processNextMove();
     }
@@ -357,8 +362,9 @@ export class RubikEngine {
     this.currentRotatingMove = move;
     this.animationProgress = 0;
 
-    // Notify first move start if timer is idle (only for real slice turns, not whole cube rotation, and not programmatic)
-    if (!move.isWholeCube && this.onFirstMoveStart && !this.isProgrammatic) {
+    const isProg = !!move.isProgrammatic || this.isProgrammatic;
+    // Notify first move start if timer is idle (only for real user slice turns, not whole cube rotation, and never programmatic)
+    if (!move.isWholeCube && this.onFirstMoveStart && !isProg) {
       this.onFirstMoveStart();
     }
 
@@ -412,6 +418,11 @@ export class RubikEngine {
         layer = -1;
         baseAngle = Math.PI / 2;
         break;
+      case 'M':
+        axis = 'x';
+        layer = 0;
+        baseAngle = Math.PI / 2;
+        break;
       case 'U':
         axis = 'y';
         layer = 1;
@@ -420,6 +431,11 @@ export class RubikEngine {
       case 'D':
         axis = 'y';
         layer = -1;
+        baseAngle = Math.PI / 2;
+        break;
+      case 'E':
+        axis = 'y';
+        layer = 0;
         baseAngle = Math.PI / 2;
         break;
       case 'F':
@@ -431,6 +447,11 @@ export class RubikEngine {
         axis = 'z';
         layer = -1;
         baseAngle = Math.PI / 2;
+        break;
+      case 'S':
+        axis = 'z';
+        layer = 0;
+        baseAngle = -Math.PI / 2;
         break;
     }
 
@@ -532,7 +553,9 @@ export class RubikEngine {
     // Check if cube is solved
     const solved = this.checkIsSolved();
 
-    if (this.onMoveFinished) {
+    const isProg = !!finishedMove.isProgrammatic || this.isProgrammatic;
+    // Only notify move finished for manual user moves (never during automatic scramble)
+    if (this.onMoveFinished && !isProg) {
       this.onMoveFinished(finishedMove, solved);
     }
 
@@ -1033,6 +1056,10 @@ export class RubikEngine {
       } else if (gy === -1) {
         candidates.push({ face: 'D', direction: 1, notation: 'D' });
         candidates.push({ face: 'D', direction: -1, notation: "D'" });
+      } else {
+        // Middle horizontal slice (Equator)
+        candidates.push({ face: 'E', direction: 1, notation: 'E' });
+        candidates.push({ face: 'E', direction: -1, notation: "E'" });
       }
 
       const gx = Math.round(grid.x);
@@ -1042,6 +1069,10 @@ export class RubikEngine {
       } else if (gx === -1) {
         candidates.push({ face: 'L', direction: 1, notation: 'L' });
         candidates.push({ face: 'L', direction: -1, notation: "L'" });
+      } else {
+        // Middle vertical slice (Middle)
+        candidates.push({ face: 'M', direction: 1, notation: 'M' });
+        candidates.push({ face: 'M', direction: -1, notation: "M'" });
       }
     }
     // Face Normal along Y (Up or Down)
@@ -1053,6 +1084,10 @@ export class RubikEngine {
       } else if (gz === -1) {
         candidates.push({ face: 'B', direction: 1, notation: 'B' });
         candidates.push({ face: 'B', direction: -1, notation: "B'" });
+      } else {
+        // Middle slice along Z (Standing)
+        candidates.push({ face: 'S', direction: 1, notation: 'S' });
+        candidates.push({ face: 'S', direction: -1, notation: "S'" });
       }
 
       const gx = Math.round(grid.x);
@@ -1062,6 +1097,10 @@ export class RubikEngine {
       } else if (gx === -1) {
         candidates.push({ face: 'L', direction: 1, notation: 'L' });
         candidates.push({ face: 'L', direction: -1, notation: "L'" });
+      } else {
+        // Middle slice along X (Middle)
+        candidates.push({ face: 'M', direction: 1, notation: 'M' });
+        candidates.push({ face: 'M', direction: -1, notation: "M'" });
       }
     }
     // Face Normal along X (Right or Left)
@@ -1073,6 +1112,10 @@ export class RubikEngine {
       } else if (gy === -1) {
         candidates.push({ face: 'D', direction: 1, notation: 'D' });
         candidates.push({ face: 'D', direction: -1, notation: "D'" });
+      } else {
+        // Middle slice along Y (Equator)
+        candidates.push({ face: 'E', direction: 1, notation: 'E' });
+        candidates.push({ face: 'E', direction: -1, notation: "E'" });
       }
 
       const gz = Math.round(grid.z);
@@ -1082,6 +1125,10 @@ export class RubikEngine {
       } else if (gz === -1) {
         candidates.push({ face: 'B', direction: 1, notation: 'B' });
         candidates.push({ face: 'B', direction: -1, notation: "B'" });
+      } else {
+        // Middle slice along Z (Standing)
+        candidates.push({ face: 'S', direction: 1, notation: 'S' });
+        candidates.push({ face: 'S', direction: -1, notation: "S'" });
       }
     }
 

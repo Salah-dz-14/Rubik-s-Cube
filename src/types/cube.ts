@@ -1,4 +1,4 @@
-export type FaceName = 'U' | 'D' | 'L' | 'R' | 'F' | 'B';
+export type FaceName = 'U' | 'D' | 'L' | 'R' | 'F' | 'B' | 'M' | 'E' | 'S';
 
 export type Axis = 'x' | 'y' | 'z';
 
@@ -8,6 +8,7 @@ export interface Move {
   notation: string; // e.g. "R", "R'", "R2", "y", "x"
   isWholeCube?: boolean;
   wholeAxis?: 'x' | 'y' | 'z';
+  isProgrammatic?: boolean;
 }
 
 export type ThemeName = 'classic' | 'neon' | 'pastel' | 'high_contrast';
