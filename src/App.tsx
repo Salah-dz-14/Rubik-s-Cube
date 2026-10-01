@@ -571,6 +571,11 @@ export default function App() {
         darkMode={preferences.darkMode}
         soundEnabled={preferences.soundEnabled}
         bestSingle={stats.bestSingle}
+        timeMs={timeMs}
+        timerState={timerState}
+        penalty={currentPenalty}
+        timerDisabled={isScrambling || isSolving}
+        onTimerAction={handleTimerAction}
         onToggleDarkMode={() => handleUpdatePreferences({ ...preferences, darkMode: !preferences.darkMode })}
         onToggleSound={() => handleUpdatePreferences({ ...preferences, soundEnabled: !preferences.soundEnabled })}
         onOpenStats={() => setIsStatsOpen(true)}
@@ -592,13 +597,11 @@ export default function App() {
       {/* Google Doodle Bottom Bar: Move Counter + Timer + Action Pill */}
       <GoogleDoodleBottomBar
         moveCount={moveCount}
-        timeMs={timeMs}
         timerState={timerState}
         penalty={currentPenalty}
         isScrambling={isScrambling}
         isSolving={isSolving}
         onAutoSolve={handleAutoSolve}
-        onTimerAction={handleTimerAction}
         onSetPenalty={handleSetPenalty}
         onAnimatedScramble={() => runAnimatedScramble()}
         onOpenGuide={() => setIsGuideOpen(true)}

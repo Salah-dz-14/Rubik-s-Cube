@@ -1,17 +1,14 @@
 import React from 'react';
 import { Star, RotateCcw, HelpCircle } from 'lucide-react';
 import { SolvePenalty, TimerState } from '../types/cube';
-import { formatSolveTime, formatTime } from '../utils/stats';
 
 interface GoogleDoodleBottomBarProps {
   moveCount: number;
-  timeMs: number;
   timerState: TimerState;
   penalty: SolvePenalty;
   isScrambling: boolean;
   isSolving: boolean;
   onAutoSolve: () => void;
-  onTimerAction: () => void;
   onSetPenalty: (penalty: SolvePenalty) => void;
   onAnimatedScramble: () => void;
   onOpenGuide: () => void;
@@ -20,7 +17,6 @@ interface GoogleDoodleBottomBarProps {
 
 export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
   moveCount,
-  timeMs,
   timerState,
   penalty,
   isScrambling,
@@ -29,22 +25,16 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
   onAnimatedScramble,
   onOpenGuide,
   onOpenStats,
-  onTimerAction,
   onSetPenalty,
 }) => {
   const isBusy = isScrambling || isSolving;
-  const timerDisplay = timerState === 'inspecting'
-    ? timeMs >= 17000 ? 'DNF' : timeMs > 15000 ? '+2' : formatTime(15000 - timeMs)
-    : timerState === 'solved' ? formatSolveTime(timeMs, penalty)
-    : timerState === 'stopped' ? 'DNF'
-    : formatTime(timeMs);
 
   return (
     <div className="w-full flex flex-col items-center pb-6 sm:pb-8 px-4 z-20 pointer-events-auto select-none">
       {/* Main Google Doodle Controls Row: Move Count + Timer on Left, Action Pill on Right */}
       <div className="w-full max-w-lg flex items-center justify-between gap-4 px-2 sm:px-4">
-        {/* Left: Big Google Doodle Move Counter & Time (Display only; starts upon moving cube) */}
-        <div className="flex items-baseline gap-3">
+        {/* Left: Big Google Doodle Move Counter */}
+        <div className="flex items-baseline">
           {/* Large Move Number */}
           <div className="flex items-baseline gap-1">
             <span className="font-sans text-4xl sm:text-5xl font-light tracking-tight text-slate-800 dark:text-slate-100 transition">
@@ -55,25 +45,6 @@ export const GoogleDoodleBottomBar: React.FC<GoogleDoodleBottomBarProps> = ({
             </span>
           </div>
 
-          {/* Running or Elapsed Time */}
-          <button
-            type="button"
-            onClick={onTimerAction}
-            disabled={isBusy || timerState === 'solved' || timerState === 'stopped'}
-            className="min-w-20 flex items-center justify-center px-2.5 py-1 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/40 dark:border-slate-700/50 disabled:cursor-default"
-            title={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
-            aria-label={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
-          >
-            <span
-              className={`font-mono text-sm sm:text-base font-semibold ${
-                timerState === 'running' || timerState === 'inspecting'
-                  ? 'text-blue-600 dark:text-blue-400 animate-pulse'
-                  : 'text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              {timerDisplay}
-            </span>
-          </button>
         </div>
 
         {/* Right: Google Doodle Action Pill */}

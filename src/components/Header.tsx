@@ -1,7 +1,8 @@
 import React from 'react';
 import { Undo2, Sun, Moon, Volume2, VolumeX, Trophy, Settings } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
-import { formatTime } from '../utils/stats';
+import { SolvePenalty, TimerState } from '../types/cube';
+import { formatSolveTime, formatTime } from '../utils/stats';
 
 interface HeaderProps {
   canUndo: boolean;
@@ -9,6 +10,11 @@ interface HeaderProps {
   darkMode: boolean;
   soundEnabled: boolean;
   bestSingle: number | null;
+  timeMs: number;
+  timerState: TimerState;
+  penalty: SolvePenalty;
+  timerDisabled: boolean;
+  onTimerAction: () => void;
   onToggleDarkMode: () => void;
   onToggleSound: () => void;
   onOpenStats: () => void;
@@ -21,13 +27,25 @@ export const Header: React.FC<HeaderProps> = ({
   darkMode,
   soundEnabled,
   bestSingle,
+  timeMs,
+  timerState,
+  penalty,
+  timerDisabled,
+  onTimerAction,
   onToggleDarkMode,
   onToggleSound,
   onOpenStats,
   onOpenSettings,
 }) => {
+  const timerDisplay = timerState === 'inspecting'
+    ? timeMs >= 17000 ? 'DNF' : timeMs > 15000 ? '+2' : formatTime(15000 - timeMs)
+    : timerState === 'solved' ? formatSolveTime(timeMs, penalty)
+    : timerState === 'stopped' ? 'DNF'
+    : formatTime(timeMs);
+
   return (
-    <header className="w-full px-4 sm:px-6 pt-3 pb-2 flex items-center justify-between z-30 select-none">
+    <header className="w-full px-4 sm:px-6 pt-3 pb-2 flex flex-col z-30 select-none">
+      <div className="w-full flex items-center justify-between">
       {/* Top Left: Google Doodle Emblem & Purple Undo Button */}
       <div className="flex items-center gap-3">
         {/* Rubik's Cube Emblem (matching exact app icon) */}
@@ -123,6 +141,22 @@ export const Header: React.FC<HeaderProps> = ({
           aria-label="Settings"
         >
           <Settings className="w-4 h-4" />
+        </button>
+      </div>
+      </div>
+
+      <div className="mt-1 flex justify-center">
+        <button
+          type="button"
+          onClick={onTimerAction}
+          disabled={timerDisabled || timerState === 'solved' || timerState === 'stopped'}
+          className="min-w-24 px-3 py-1 rounded-lg border border-slate-300/50 bg-slate-200/60 text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200 disabled:cursor-default"
+          title={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
+          aria-label={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
+        >
+          <span className={`font-mono text-base font-semibold ${timerState === 'running' || timerState === 'inspecting' ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+            {timerDisplay}
+          </span>
         </button>
       </div>
     </header>
