@@ -184,7 +184,11 @@ export class RubikEngine {
    * Generates a canvas texture with a rounded-rectangle sticker tile.
    * Features distinct rounded corners and vibrant glossy highlights.
    */
-  private createStickerTexture(colorHex: string, label: string = ''): THREE.CanvasTexture {
+  private createStickerTexture(
+    colorHex: string,
+    label: string = '',
+    isWhiteCenter: boolean = false
+  ): THREE.CanvasTexture {
     const size = 512;
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -222,8 +226,10 @@ export class RubikEngine {
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // Optional center face label (U, D, L, R, F, B)
-    if (this.showFaceLabels && label) {
+    // Iconic Rubik's CUBE logo on the white center square (as seen on official cubes)
+    if (isWhiteCenter) {
+      this.drawRubiksLogo(ctx, size);
+    } else if (this.showFaceLabels && label) {
       ctx.fillStyle =
         colorHex === '#FFFFFF' || colorHex.toLowerCase() === '#f8fafc' || colorHex.toLowerCase().includes('ffd')
           ? 'rgba(0,0,0,0.6)'
@@ -239,15 +245,114 @@ export class RubikEngine {
     return texture;
   }
 
+  /**
+   * Draws the iconic official Rubik's CUBE logo lockup tilted ~-14deg on the white center piece.
+   */
+  private drawRubiksLogo(ctx: CanvasRenderingContext2D, size: number) {
+    ctx.save();
+    ctx.translate(size / 2, size / 2 + 10);
+    // Tilted upwards by -14 degrees just like the real sticker in the user's photo
+    ctx.rotate(-14 * (Math.PI / 180));
+
+    // Scale to fill nicely inside the sticker
+    const scale = 1.32;
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#000000';
+    ctx.strokeStyle = '#000000';
+
+    // 1. "Rubik's" cursive script text with weight
+    ctx.save();
+    ctx.font = 'italic 900 50px "Brush Script MT", "Caveat", "Segoe Script", "Dancing Script", cursive, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.lineWidth = 2.5;
+    ctx.strokeText("Rubik's", 0, -14);
+    ctx.fillText("Rubik's", 0, -14);
+
+    // Decorative underline/flourish tail under "Rubik's"
+    ctx.beginPath();
+    ctx.moveTo(36, -8);
+    ctx.quadraticCurveTo(54, -5, 74, -10);
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. "CUBE" in classic thick geometric cutout block font
+    // C
+    ctx.beginPath();
+    ctx.moveTo(-84, 6);
+    ctx.lineTo(-44, 6);
+    ctx.lineTo(-44, 20);
+    ctx.lineTo(-68, 20);
+    ctx.lineTo(-68, 32);
+    ctx.lineTo(-44, 32);
+    ctx.lineTo(-44, 46);
+    ctx.lineTo(-84, 46);
+    ctx.closePath();
+    ctx.fill();
+
+    // U
+    ctx.beginPath();
+    ctx.moveTo(-36, 6);
+    ctx.lineTo(-18, 6);
+    ctx.lineTo(-18, 32);
+    ctx.lineTo(-4, 32);
+    ctx.lineTo(-4, 6);
+    ctx.lineTo(14, 6);
+    ctx.lineTo(14, 46);
+    ctx.lineTo(-36, 46);
+    ctx.closePath();
+    ctx.fill();
+
+    // B
+    ctx.beginPath();
+    ctx.moveTo(22, 6);
+    ctx.lineTo(58, 6);
+    ctx.bezierCurveTo(63, 6, 66, 9, 66, 15);
+    ctx.bezierCurveTo(66, 19, 63, 23, 58, 24);
+    ctx.bezierCurveTo(64, 25, 67, 29, 67, 36);
+    ctx.bezierCurveTo(67, 43, 63, 46, 56, 46);
+    ctx.lineTo(22, 46);
+    ctx.closePath();
+    ctx.fill();
+
+    // B cutouts (fill with white)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(36, 16, 13, 7);
+    ctx.fillRect(36, 28, 14, 8);
+    ctx.fillStyle = '#000000';
+
+    // E
+    ctx.beginPath();
+    ctx.moveTo(74, 6);
+    ctx.lineTo(112, 6);
+    ctx.lineTo(112, 19);
+    ctx.lineTo(91, 19);
+    ctx.lineTo(91, 22);
+    ctx.lineTo(108, 22);
+    ctx.lineTo(108, 30);
+    ctx.lineTo(91, 30);
+    ctx.lineTo(91, 33);
+    ctx.lineTo(112, 33);
+    ctx.lineTo(112, 46);
+    ctx.lineTo(74, 46);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   private getCubieMaterials(x: number, y: number, z: number): THREE.Material[] {
     // 0: +X (R), 1: -X (L), 2: +Y (U), 3: -Y (D), 4: +Z (F), 5: -Z (B)
     const materials: THREE.Material[] = [];
 
-    const createMat = (isSticker: boolean, colorHex: string, label: string) => {
+    const createMat = (isSticker: boolean, colorHex: string, label: string, isWhiteCenter: boolean = false) => {
       if (!isSticker) {
         return this.coreMaterial;
       }
-      const texture = this.createStickerTexture(colorHex, label);
+      const texture = this.createStickerTexture(colorHex, label, isWhiteCenter);
       return new THREE.MeshStandardMaterial({
         map: texture,
         roughness: 0.22,
@@ -263,13 +368,15 @@ export class RubikEngine {
     const isCenterL = x === -1 && y === 0 && z === 0;
     materials.push(createMat(x === -1, this.theme.colors.L, isCenterL ? 'L' : ''));
 
-    // +Y (Up)
+    // +Y (Up - Yellow Top)
     const isCenterU = x === 0 && y === 1 && z === 0;
-    materials.push(createMat(y === 1, this.theme.colors.U, isCenterU ? 'U' : ''));
+    const isWhiteU = this.theme.colors.U === '#FFFFFF' || this.theme.colors.U.toLowerCase() === '#f8fafc';
+    materials.push(createMat(y === 1, this.theme.colors.U, isCenterU ? 'U' : '', isCenterU && isWhiteU));
 
-    // -Y (Down)
+    // -Y (Down - White Center Down on official WCA cubes)
     const isCenterD = x === 0 && y === -1 && z === 0;
-    materials.push(createMat(y === -1, this.theme.colors.D, isCenterD ? 'D' : ''));
+    const isWhiteD = this.theme.colors.D === '#FFFFFF' || this.theme.colors.D.toLowerCase() === '#ffffff';
+    materials.push(createMat(y === -1, this.theme.colors.D, isCenterD ? 'D' : '', isCenterD && isWhiteD));
 
     // +Z (Front)
     const isCenterF = x === 0 && y === 0 && z === 1;

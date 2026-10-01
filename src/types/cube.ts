@@ -17,8 +17,8 @@ export interface ColorTheme {
   name: ThemeName;
   label: string;
   colors: {
-    U: string; // Up (White / Light)
-    D: string; // Down (Yellow)
+    U: string; // Up (Yellow in official WCA standard)
+    D: string; // Down (White in official WCA standard)
     L: string; // Left (Orange)
     R: string; // Right (Red)
     F: string; // Front (Green)

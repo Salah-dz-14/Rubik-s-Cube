@@ -1,65 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#020617" />
-    </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#3b82f6" flood-opacity="0.3" />
-    </filter>
-  </defs>
+  <rect x="0.00" y="0.00" width="171.00" height="171.00" fill="#FF5700" />
+  <rect x="170.67" y="0.00" width="171.00" height="171.00" fill="#FFFFFF" />
+  <rect x="341.33" y="0.00" width="171.00" height="171.00" fill="#FFDE00" />
+  <rect x="0.00" y="170.67" width="171.00" height="171.00" fill="#FFDE00" />
+  <rect x="170.67" y="170.67" width="171.00" height="171.00" fill="#EE0000" />
+  <rect x="341.33" y="170.67" width="171.00" height="171.00" fill="#0015D5" />
+  <rect x="0.00" y="341.33" width="171.00" height="171.00" fill="#009E0B" />
+  <rect x="170.67" y="341.33" width="171.00" height="171.00" fill="#0015D5" />
+  <rect x="341.33" y="341.33" width="171.00" height="171.00" fill="#009E0B" />
 
-  <!-- Background container -->
-  <rect width="512" height="512" rx="104" fill="url(#bg)" />
+  <g transform="translate(256.00, 85.33) rotate(-14) scale(0.656)">
+    <!-- "Rubik's" script -->
+    <text x="0" y="-12" font-family="'Brush Script MT', 'Caveat', 'Segoe Script', 'Dancing Script', cursive, sans-serif" font-size="52" font-weight="900" font-style="italic" text-anchor="middle" fill="#000000">Rubik&apos;s</text>
+    <path d="M42,-7 Q58,-4 76,-9" stroke="#000000" stroke-width="4" stroke-linecap="round" fill="none" />
 
-  <g transform="translate(256, 256) scale(0.9)" filter="url(#glow)">
-    <!-- Isometric Rubik's Cube -->
-    <!-- Top Face (Yellow) -->
-    <!-- Row 0 -->
-    <polygon points="0,-160 50,-131 0,-102 -50,-131" fill="#facc15" stroke="#111827" stroke-width="6" rx="4" />
-    <polygon points="54,-129 104,-100 54,-71 4,-100" fill="#eab308" stroke="#111827" stroke-width="6" />
-    <polygon points="108,-98 158,-69 108,-40 58,-69" fill="#facc15" stroke="#111827" stroke-width="6" />
-
-    <!-- Row 1 -->
-    <polygon points="-54,-129 -4,-100 -54,-71 -104,-100" fill="#fef08a" stroke="#111827" stroke-width="6" />
-    <polygon points="0,-98 50,-69 0,-40 -50,-69" fill="#fbbf24" stroke="#111827" stroke-width="6" />
-    <polygon points="54,-67 104,-38 54,-9 4,-38" fill="#facc15" stroke="#111827" stroke-width="6" />
-
-    <!-- Row 2 -->
-    <polygon points="-108,-98 -58,-69 -108,-40 -158,-69" fill="#fde047" stroke="#111827" stroke-width="6" />
-    <polygon points="-54,-67 -4,-38 -54,-9 -104,-38" fill="#facc15" stroke="#111827" stroke-width="6" />
-    <polygon points="0,-36 50,-7 0,22 -50,-7" fill="#fef08a" stroke="#111827" stroke-width="6" />
-
-    <!-- Left Face (Blue / Cyan) -->
-    <!-- Row 0 -->
-    <polygon points="-160,-65 -110,-36 -110,22 -160,-7" fill="#2563eb" stroke="#111827" stroke-width="6" />
-    <polygon points="-106,-34 -56,-5 -56,53 -106,24" fill="#3b82f6" stroke="#111827" stroke-width="6" />
-    <polygon points="-52,-3 -2,26 -2,84 -52,55" fill="#1d4ed8" stroke="#111827" stroke-width="6" />
-
-    <!-- Row 1 -->
-    <polygon points="-160,-3 -110,26 -110,84 -160,55" fill="#3b82f6" stroke="#111827" stroke-width="6" />
-    <polygon points="-106,28 -56,57 -56,115 -106,86" fill="#60a5fa" stroke="#111827" stroke-width="6" />
-    <polygon points="-52,59 -2,88 -2,146 -52,117" fill="#2563eb" stroke="#111827" stroke-width="6" />
-
-    <!-- Row 2 -->
-    <polygon points="-160,59 -110,88 -110,146 -160,117" fill="#1e40af" stroke="#111827" stroke-width="6" />
-    <polygon points="-106,90 -56,119 -56,177 -106,148" fill="#2563eb" stroke="#111827" stroke-width="6" />
-    <polygon points="-52,121 -2,150 -2,208 -52,179" fill="#3b82f6" stroke="#111827" stroke-width="6" />
-
-    <!-- Right Face (Red / Coral) -->
-    <!-- Row 0 -->
-    <polygon points="2,26 52,-3 52,55 2,84" fill="#ef4444" stroke="#111827" stroke-width="6" />
-    <polygon points="56,-5 106,-34 106,24 56,53" fill="#dc2626" stroke="#111827" stroke-width="6" />
-    <polygon points="110,-36 160,-65 160,-7 110,22" fill="#f87171" stroke="#111827" stroke-width="6" />
-
-    <!-- Row 1 -->
-    <polygon points="2,88 52,59 52,117 2,146" fill="#f87171" stroke="#111827" stroke-width="6" />
-    <polygon points="56,57 106,28 106,86 56,115" fill="#ef4444" stroke="#111827" stroke-width="6" />
-    <polygon points="110,26 160,-3 160,55 110,84" fill="#b91c1c" stroke="#111827" stroke-width="6" />
-
-    <!-- Row 2 -->
-    <polygon points="2,150 52,121 52,179 2,208" fill="#dc2626" stroke="#111827" stroke-width="6" />
-    <polygon points="56,119 106,90 106,148 56,177" fill="#f87171" stroke="#111827" stroke-width="6" />
-    <polygon points="110,88 160,59 160,117 110,146" fill="#ef4444" stroke="#111827" stroke-width="6" />
+    <!-- "CUBE" geometric block font -->
+    <path d="M-84,6 L-44,6 L-44,20 L-68,20 L-68,32 L-44,32 L-44,46 L-84,46 Z" fill="#000000" />
+    <path d="M-36,6 L-18,6 L-18,32 L-4,32 L-4,6 L14,6 L14,46 L-36,46 Z" fill="#000000" />
+    <path d="M22,6 L58,6 C63,6 66,9 66,15 C66,19 63,23 58,24 C64,25 67,29 67,36 C67,43 63,46 56,46 L22,46 Z M38,17 L48,17 C50,17 51,18 51,20 C51,22 50,23 48,23 L38,23 Z M38,29 L49,29 C51,29 52,30 52,33 C52,35 51,36 49,36 L38,36 Z" fill="#000000" />
+    <path d="M74,6 L112,6 L112,19 L91,19 L91,22 L108,22 L108,30 L91,30 L91,33 L112,33 L112,46 L74,46 Z" fill="#000000" />
   </g>
 </svg>

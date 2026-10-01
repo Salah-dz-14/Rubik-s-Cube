@@ -5,8 +5,8 @@ export const THEMES: Record<string, ColorTheme> = {
     name: 'classic',
     label: 'Classic Vibrant',
     colors: {
-      U: '#FFFFFF', // Pure Crisp White
-      D: '#FFD600', // Vibrant Sunny Yellow
+      U: '#FFD600', // Vibrant Sunny Yellow (Top)
+      D: '#FFFFFF', // Pure Crisp White (Bottom / Down)
       L: '#FF6D00', // Vibrant Citrus Orange
       R: '#EE2B2B', // Vibrant Ruby Red
       F: '#00D060', // Vibrant Emerald Green
@@ -19,8 +19,8 @@ export const THEMES: Record<string, ColorTheme> = {
     name: 'neon',
     label: 'Cyber Neon',
     colors: {
-      U: '#FFFFFF',
-      D: '#FFEE00',
+      U: '#FFEE00', // Yellow (Top)
+      D: '#FFFFFF', // White (Bottom / Down)
       L: '#FF8800',
       R: '#FF1744',
       F: '#00E676',
@@ -33,8 +33,8 @@ export const THEMES: Record<string, ColorTheme> = {
     name: 'pastel',
     label: 'Nordic Pastel',
     colors: {
-      U: '#FFFFFF',
-      D: '#FFF176',
+      U: '#FFF176', // Yellow (Top)
+      D: '#FFFFFF', // White (Bottom / Down)
       L: '#FFB74D',
       R: '#FF8A80',
       F: '#A5D6A7',
@@ -47,8 +47,8 @@ export const THEMES: Record<string, ColorTheme> = {
     name: 'high_contrast',
     label: 'High Contrast',
     colors: {
-      U: '#FFFFFF',
-      D: '#FFFF00',
+      U: '#FFFF00', // Yellow (Top)
+      D: '#FFFFFF', // White (Bottom / Down)
       L: '#FF7700',
       R: '#FF0033',
       F: '#00FF66',

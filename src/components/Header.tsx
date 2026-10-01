@@ -30,22 +30,28 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="w-full px-4 sm:px-6 pt-3 pb-2 flex items-center justify-between z-30 select-none">
       {/* Top Left: Google Doodle Emblem & Purple Undo Button */}
       <div className="flex items-center gap-3">
-        {/* Google Doodle Rubik's Cube Emblem */}
+        {/* Rubik's Cube Emblem (matching exact app icon) */}
         <div
-          className="flex items-center gap-1 cursor-pointer hover:opacity-90 transition"
-          title="Google Doodle Rubik's Cube"
+          className="flex items-center gap-1.5 cursor-pointer hover:opacity-90 transition"
+          title="Rubik's SpeedCube 3D"
         >
-          <div className="flex flex-col gap-0.5">
-            <div className="flex gap-0.5">
-              <span className="w-2.5 h-2.5 rounded-[3px] bg-[#4285F4]" />
-              <span className="w-2.5 h-2.5 rounded-[3px] bg-[#EA4335]" />
-            </div>
-            <div className="flex gap-0.5">
-              <span className="w-2.5 h-2.5 rounded-[3px] bg-[#FBBC05]" />
-              <span className="w-2.5 h-2.5 rounded-[3px] bg-[#34A853]" />
-            </div>
+          <div className="grid grid-cols-3 gap-0 rounded-[3px] overflow-hidden shadow-xs">
+            {/* Row 0: Orange, White, Yellow */}
+            <span className="w-2.5 h-2.5 bg-[#FF5700]" />
+            <span className="w-2.5 h-2.5 bg-[#FFFFFF] flex items-center justify-center text-[5px] font-black text-black leading-none -rotate-12 select-none">
+              R
+            </span>
+            <span className="w-2.5 h-2.5 bg-[#FFDE00]" />
+            {/* Row 1: Yellow, Red, Blue */}
+            <span className="w-2.5 h-2.5 bg-[#FFDE00]" />
+            <span className="w-2.5 h-2.5 bg-[#EE0000]" />
+            <span className="w-2.5 h-2.5 bg-[#0015D5]" />
+            {/* Row 2: Green, Blue, Green */}
+            <span className="w-2.5 h-2.5 bg-[#009E0B]" />
+            <span className="w-2.5 h-2.5 bg-[#0015D5]" />
+            <span className="w-2.5 h-2.5 bg-[#009E0B]" />
           </div>
-          <span className="ml-1.5 font-bold text-sm tracking-tight text-slate-800 dark:text-slate-100 hidden min-[360px]:inline">
+          <span className="font-bold text-sm tracking-tight text-slate-800 dark:text-slate-100 hidden min-[360px]:inline">
             Rubik's
           </span>
         </div>
