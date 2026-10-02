@@ -1,8 +1,7 @@
 import React from 'react';
 import { Undo2, Sun, Moon, Volume2, VolumeX, Trophy, Settings } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
-import { SolvePenalty, TimerState } from '../types/cube';
-import { formatSolveTime, formatTime } from '../utils/stats';
+import { formatTime } from '../utils/stats';
 
 interface HeaderProps {
   canUndo: boolean;
@@ -10,11 +9,6 @@ interface HeaderProps {
   darkMode: boolean;
   soundEnabled: boolean;
   bestSingle: number | null;
-  timeMs: number;
-  timerState: TimerState;
-  penalty: SolvePenalty;
-  timerDisabled: boolean;
-  onTimerAction: () => void;
   onToggleDarkMode: () => void;
   onToggleSound: () => void;
   onOpenStats: () => void;
@@ -27,22 +21,11 @@ export const Header: React.FC<HeaderProps> = ({
   darkMode,
   soundEnabled,
   bestSingle,
-  timeMs,
-  timerState,
-  penalty,
-  timerDisabled,
-  onTimerAction,
   onToggleDarkMode,
   onToggleSound,
   onOpenStats,
   onOpenSettings,
 }) => {
-  const timerDisplay = timerState === 'inspecting'
-    ? timeMs >= 17000 ? 'DNF' : timeMs > 15000 ? '+2' : formatTime(15000 - timeMs)
-    : timerState === 'solved' ? formatSolveTime(timeMs, penalty)
-    : timerState === 'stopped' ? 'DNF'
-    : formatTime(timeMs);
-
   return (
     <header className="w-full px-4 sm:px-6 pt-3 pb-2 flex flex-col z-30 select-none">
       <div className="w-full flex items-center justify-between">
@@ -85,17 +68,6 @@ export const Header: React.FC<HeaderProps> = ({
           <Undo2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
         </button>
 
-        {/* PB Badge */}
-        {bestSingle !== null && (
-          <button
-            onClick={onOpenStats}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-xs font-semibold border border-amber-500/20 transition active:scale-95"
-            title="View High Scores"
-          >
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            <span className="font-mono text-xs">{formatTime(bestSingle)}</span>
-          </button>
-        )}
       </div>
 
       {/* Top Right: Dark/Light Mode, Sound, Settings, PWA */}
@@ -133,32 +105,33 @@ export const Header: React.FC<HeaderProps> = ({
           <Trophy className="w-4 h-4" />
         </button>
 
-        {/* Settings */}
-        <button
-          onClick={onOpenSettings}
-          className="p-2 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition active:scale-90 cursor-pointer"
-          title="Settings & Theme"
-          aria-label="Settings"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+        <div className="flex flex-col items-center">
+          {/* Settings */}
+          <button
+            onClick={onOpenSettings}
+            className="p-2 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition active:scale-90 cursor-pointer"
+            title="Settings & Theme"
+            aria-label="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+
+          {/* Personal best */}
+          {bestSingle !== null && (
+            <button
+              onClick={onOpenStats}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-xs font-semibold border border-amber-500/20 transition active:scale-95"
+              title="View High Scores"
+              aria-label={`Personal best ${formatTime(bestSingle)}; view high scores`}
+            >
+              <Trophy className="w-3 h-3 text-amber-500" />
+              <span className="font-mono text-[10px]">{formatTime(bestSingle)}</span>
+            </button>
+          )}
+        </div>
       </div>
       </div>
 
-      <div className="mt-1 flex justify-center">
-        <button
-          type="button"
-          onClick={onTimerAction}
-          disabled={timerDisabled || timerState === 'solved' || timerState === 'stopped'}
-          className="min-w-24 px-3 py-1 rounded-lg border border-slate-300/50 bg-slate-200/60 text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200 disabled:cursor-default"
-          title={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
-          aria-label={timerState === 'running' ? 'Stop timer and mark DNF' : timerState === 'inspecting' ? 'Start solve' : 'Start timer or inspection'}
-        >
-          <span className={`font-mono text-base font-semibold ${timerState === 'running' || timerState === 'inspecting' ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-            {timerDisplay}
-          </span>
-        </button>
-      </div>
     </header>
   );
 };
