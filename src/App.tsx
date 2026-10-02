@@ -18,7 +18,6 @@ import {
 } from './utils/stats';
 import { generateScramble, parseAlgorithm, getInverseMove } from './utils/scrambler';
 import { sound } from './utils/audio';
-import { initSolverAsync, findMinimalSolution } from './utils/solver';
 
 export default function App() {
   const engineRef = useRef<RubikEngine | null>(null);
@@ -59,10 +58,9 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
 
-  // Initialize sound settings and prime the optimal solver in background
+  // Initialize sound settings
   useEffect(() => {
     sound.enabled = preferences.soundEnabled;
-    initSolverAsync();
   }, [preferences.soundEnabled]);
 
   // Save preferences when changed
@@ -184,7 +182,7 @@ export default function App() {
   }, [runAnimatedScramble]);
 
   // --- Optimal Star Solver ("زر النجمة يقوم بحل المكعب باقل حركات ممكنة") ---
-  const handleAutoSolve = useCallback(() => {
+  const handleAutoSolve = useCallback(async () => {
     if (!engineRef.current || isScrambling || isSolving) return;
 
     // Check if already solved
@@ -216,7 +214,16 @@ export default function App() {
     setCurrentPenalty('none');
 
     // Solve with minimal moves using optimal Kociemba solver
-    const solutionMoves = findMinimalSolution(scrambleStr, moveHistory);
+    let solutionMoves: Move[];
+    try {
+      const { initSolverAsync, findMinimalSolution } = await import('./utils/solver');
+      initSolverAsync();
+      solutionMoves = findMinimalSolution(scrambleStr, moveHistory);
+    } catch (error) {
+      console.error('Unable to load cube solver:', error);
+      setIsSolving(false);
+      return;
+    }
 
     if (solutionMoves.length === 0) {
       setIsSolving(false);

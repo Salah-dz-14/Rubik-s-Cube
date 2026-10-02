@@ -36,7 +36,7 @@ export class RubikEngine {
   private moveSpeedMs: number = 170;
 
   // Materials & Textures
-  private materialsCache: Map<string, THREE.Material[]> = new Map();
+  private stickerMaterialsCache = new Map<string, THREE.MeshStandardMaterial>();
   private coreMaterial: THREE.MeshStandardMaterial;
 
   // Animation & Move Queue
@@ -119,7 +119,6 @@ export class RubikEngine {
     // 6. Cube Structure
     this.cubeGroup = new THREE.Group();
     this.scene.add(this.cubeGroup);
-    this.buildCube();
 
     // 7. Event Listeners
     this.bindEvents();
@@ -323,12 +322,17 @@ export class RubikEngine {
       if (!isSticker) {
         return this.coreMaterial;
       }
-      const texture = this.createStickerTexture(colorHex, label, isWhiteCenter);
-      return new THREE.MeshStandardMaterial({
-        map: texture,
-        roughness: 0.22,
-        metalness: 0.02,
-      });
+      const key = JSON.stringify([colorHex, label, isWhiteCenter]);
+      let material = this.stickerMaterialsCache.get(key);
+      if (!material) {
+        material = new THREE.MeshStandardMaterial({
+          map: this.createStickerTexture(colorHex, label, isWhiteCenter),
+          roughness: 0.22,
+          metalness: 0.02,
+        });
+        this.stickerMaterialsCache.set(key, material);
+      }
+      return material;
     };
 
     // +X (Right)
@@ -394,10 +398,13 @@ export class RubikEngine {
   }
 
   public setTheme(theme: ColorTheme, showLabels?: boolean) {
+    const appearanceChanged =
+      theme !== this.theme || (showLabels !== undefined && showLabels !== this.showFaceLabels);
     this.theme = theme;
     if (showLabels !== undefined) this.showFaceLabels = showLabels;
     this.coreMaterial.color.set(this.theme.colors.core);
-    this.buildCube();
+    if (appearanceChanged) this.disposeStickerMaterials();
+    if (appearanceChanged || this.cubies.length === 0) this.buildCube();
   }
 
   public setMoveSpeed(ms: number) {
@@ -406,8 +413,18 @@ export class RubikEngine {
   }
 
   public setShowFaceLabels(show: boolean) {
+    if (show === this.showFaceLabels) return;
     this.showFaceLabels = show;
+    this.disposeStickerMaterials();
     this.buildCube();
+  }
+
+  private disposeStickerMaterials() {
+    for (const material of this.stickerMaterialsCache.values()) {
+      material.map?.dispose();
+      material.dispose();
+    }
+    this.stickerMaterialsCache.clear();
   }
 
   // --- Rotations & Moves Execution ---
@@ -1371,6 +1388,10 @@ export class RubikEngine {
       cancelAnimationFrame(this.animationFrameId);
     }
     window.removeEventListener('resize', this.onResize);
+    for (const cubie of this.cubies) cubie.geometry.dispose();
+    this.cubies = [];
+    this.disposeStickerMaterials();
+    this.coreMaterial.dispose();
     this.renderer.dispose();
     if (this.renderer.domElement.parentNode) {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
