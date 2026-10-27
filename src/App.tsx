@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
+import { Analytics } from '@vercel/analytics/react';
 import { RubikEngine } from './cube/RubikEngine';
 import { CubeCanvas } from './components/CubeCanvas';
 import { GoogleDoodleBottomBar } from './components/GoogleDoodleBottomBar';
@@ -634,6 +635,8 @@ export default function App() {
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
       />
+
+      <Analytics />
     </div>
   );
 }
