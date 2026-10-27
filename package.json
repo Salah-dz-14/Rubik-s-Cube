@@ -15,6 +15,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
     "@types/three": "^0.186.0",
+    "@vercel/speed-insights": "^2.0.0",
     "@vitejs/plugin-react": "^6.1.1",
     "canvas-confetti": "^1.9.4",
     "cube-solver": "^2.4.1",
